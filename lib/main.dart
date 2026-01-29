@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/realtime_database_service.dart';
@@ -12,6 +13,13 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize WebView platform implementations
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    // Android WebView initialization is handled automatically by the plugin
+  } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+    // iOS WebView initialization is handled automatically by the plugin
+  }
   
   // Initialize auth service
   final authService = AuthService();

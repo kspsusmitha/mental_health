@@ -22,20 +22,42 @@ class JournalEntryModel {
   });
 
   factory JournalEntryModel.fromMap(Map<String, dynamic> map) {
+    // Convert emotionAnalysis if it's a Map
+    Map<String, dynamic>? emotionAnalysisMap;
+    if (map['emotionAnalysis'] != null) {
+      if (map['emotionAnalysis'] is Map) {
+        emotionAnalysisMap = Map<String, dynamic>.from(map['emotionAnalysis']);
+      } else {
+        emotionAnalysisMap = map['emotionAnalysis'];
+      }
+    }
+    
+    // Convert stressTriggers if it's a List
+    List<String>? stressTriggersList;
+    if (map['stressTriggers'] != null) {
+      if (map['stressTriggers'] is List) {
+        stressTriggersList = List<String>.from(map['stressTriggers']);
+      } else {
+        stressTriggersList = map['stressTriggers'];
+      }
+    }
+    
     return JournalEntryModel(
-      id: map['id'] ?? '',
-      userId: map['userId'] ?? '',
-      content: map['content'] ?? '',
-      mood: map['mood'] ?? 'neutral',
+      id: map['id']?.toString() ?? '',
+      userId: map['userId']?.toString() ?? '',
+      content: map['content']?.toString() ?? '',
+      mood: map['mood']?.toString() ?? 'neutral',
       moodScore: (map['moodScore'] ?? 0.5).toDouble(),
-      tags: List<String>.from(map['tags'] ?? []),
+      tags: map['tags'] != null 
+          ? List<String>.from(map['tags'].map((e) => e.toString()))
+          : [],
       date: map['date'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['date'] as int)
+          ? DateTime.fromMillisecondsSinceEpoch(
+              map['date'] is int ? map['date'] as int : int.parse(map['date'].toString())
+            )
           : DateTime.now(),
-      emotionAnalysis: map['emotionAnalysis'],
-      stressTriggers: map['stressTriggers'] != null
-          ? List<String>.from(map['stressTriggers'])
-          : null,
+      emotionAnalysis: emotionAnalysisMap,
+      stressTriggers: stressTriggersList,
     );
   }
 

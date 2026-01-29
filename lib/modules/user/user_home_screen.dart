@@ -4,12 +4,14 @@ import '../../services/auth_service.dart';
 import '../../services/realtime_database_service.dart';
 import '../../models/user_model.dart';
 import '../../models/journal_entry_model.dart';
+import '../../utils/page_transitions.dart';
 import '../user/screens/ai_chat_screen.dart';
 import '../user/screens/mood_tracking_screen.dart';
 import '../user/screens/journal_screen.dart';
 import '../user/screens/wellness_screen.dart';
 import '../user/screens/therapist_matching_screen.dart';
 import '../user/screens/profile_screen.dart';
+import '../user/screens/community_screen.dart';
 
 class UserHomeScreen extends StatefulWidget {
   const UserHomeScreen({super.key});
@@ -30,7 +32,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     const UserDashboardScreen(),
     const JournalScreen(),
     const WellnessScreen(),
-    const TherapistMatchingScreen(),
+    const CommunityScreen(),
     const UserProfileScreen(),
   ];
 
@@ -67,7 +69,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
           NavigationDestination(
             icon: Icon(Icons.people_outlined),
             selectedIcon: Icon(Icons.people),
-            label: 'Therapists',
+            label: 'Community',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
@@ -159,7 +161,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const AIChatScreen()),
+                createAnimatedRoute(const AIChatScreen()),
               );
             },
           ),
@@ -197,7 +199,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const AIChatScreen()),
+                        createAnimatedRoute(const AIChatScreen()),
                       );
                     },
                   ),
@@ -212,7 +214,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const MoodTrackingScreen()),
+                        createAnimatedRoute(const MoodTrackingScreen()),
                       );
                     },
                   ),
@@ -231,7 +233,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const JournalScreen()),
+                        createAnimatedRoute(const JournalScreen()),
                       );
                     },
                   ),
@@ -247,6 +249,40 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const WellnessScreen()),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionCard(
+                    context,
+                    icon: Icons.people,
+                    title: 'Community',
+                    color: Colors.teal,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        createAnimatedRoute(const CommunityScreen()),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildActionCard(
+                    context,
+                    icon: Icons.medical_services,
+                    title: 'Find Therapist',
+                    color: Colors.red,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        createAnimatedRoute(const TherapistMatchingScreen()),
                       );
                     },
                   ),
@@ -306,7 +342,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const MoodTrackingScreen()),
+                createAnimatedRoute(const MoodTrackingScreen()),
               ).then((_) => _loadMoodData());
             },
             style: ElevatedButton.styleFrom(
@@ -367,7 +403,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const MoodTrackingScreen()),
+                      createAnimatedRoute(const MoodTrackingScreen()),
                     ).then((_) => _loadMoodData());
                   },
                   child: const Text('Start Tracking'),
@@ -435,7 +471,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const MoodTrackingScreen()),
+                  createAnimatedRoute(const MoodTrackingScreen()),
                 ).then((_) => _loadMoodData());
               },
               child: const Text('View Full Analytics'),
