@@ -25,46 +25,46 @@ class _TherapistHomeScreenState extends State<TherapistHomeScreen> {
   final List<Widget> _screens = [
     const TherapistDashboardScreen(),
     const AppointmentsScreen(),
-    const ClientsScreen(),
     const TherapistProfileScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_today_outlined),
-            selectedIcon: Icon(Icons.calendar_today),
-            label: 'Appointments',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outlined),
-            selectedIcon: Icon(Icons.people),
-            label: 'Clients',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        setState(() {
+          _currentIndex = 0;
+        });
+      },
+      child: Scaffold(
+        body: IndexedStack(index: _currentIndex, children: _screens),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Dashboard',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.calendar_today_outlined),
+              selectedIcon: Icon(Icons.calendar_today),
+              label: 'Appointments',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -74,7 +74,8 @@ class TherapistDashboardScreen extends StatefulWidget {
   const TherapistDashboardScreen({super.key});
 
   @override
-  State<TherapistDashboardScreen> createState() => _TherapistDashboardScreenState();
+  State<TherapistDashboardScreen> createState() =>
+      _TherapistDashboardScreenState();
 }
 
 class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
@@ -93,39 +94,48 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
   Future<void> _loadDashboardData() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final therapistId = authService.currentUser?.id ?? '';
-    
+
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
-      
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
+
       // Load appointments
-      final appointmentsData = await dbService.readList('therapists/$therapistId/appointments');
+      final appointmentsData = await dbService.readList(
+        'therapists/$therapistId/appointments',
+      );
       final allAppointments = appointmentsData
           .map((data) => AppointmentModel.fromMap(data))
           .toList();
-      
+
       final upcomingAppointments = allAppointments
           .where((a) => a.status == AppointmentStatus.scheduled)
           .where((a) => a.scheduledTime.isAfter(DateTime.now()))
           .toList();
-      
-      upcomingAppointments.sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
-      
+
+      upcomingAppointments.sort(
+        (a, b) => a.scheduledTime.compareTo(b.scheduledTime),
+      );
+
       final completedAppointments = allAppointments
           .where((a) => a.status == AppointmentStatus.completed)
           .toList();
-      
+
       // Count unique clients
       final clientIds = allAppointments.map((a) => a.userId).toSet();
-      
+
       // Load user data for appointments
       final appointmentsWithUsers = <AppointmentModel>[];
       for (final appointment in upcomingAppointments.take(5)) {
-        final userData = await dbService.readData('users/${appointment.userId}');
+        final userData = await dbService.readData(
+          'users/${appointment.userId}',
+        );
         if (userData != null) {
           appointmentsWithUsers.add(appointment);
         }
       }
-      
+
       setState(() {
         _upcomingAppointments = appointmentsWithUsers;
         _totalClients = clientIds.length;
@@ -143,6 +153,7 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Therapist Dashboard'),
+        automaticallyImplyLeading: false, // Remove back button
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -202,13 +213,48 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    
+
+                    // Quick Actions
+                    Text(
+                      'Quick Actions',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            context,
+                            icon: Icons.people,
+                            title: 'Manage Clients',
+                            value: 'View',
+                            color: Colors.teal,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ClientsScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: SizedBox(),
+                        ), // Placeholder for balance
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
                     // Upcoming Appointments
                     Text(
                       'Upcoming Appointments',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     _upcomingAppointments.isEmpty
@@ -218,9 +264,16 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
                               child: Center(
                                 child: Column(
                                   children: [
-                                    Icon(Icons.calendar_today_outlined, size: 48, color: Colors.grey[400]),
+                                    Icon(
+                                      Icons.calendar_today_outlined,
+                                      size: 48,
+                                      color: Colors.grey[400],
+                                    ),
                                     const SizedBox(height: 16),
-                                    Text('No upcoming appointments', style: TextStyle(color: Colors.grey[600])),
+                                    Text(
+                                      'No upcoming appointments',
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -228,28 +281,54 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
                           )
                         : Card(
                             child: Column(
-                              children: _upcomingAppointments.map((appointment) {
+                              children: _upcomingAppointments.map((
+                                appointment,
+                              ) {
                                 return FutureBuilder<Map<String, dynamic>?>(
                                   future: _getUserData(appointment.userId),
                                   builder: (context, snapshot) {
-                                    final userName = snapshot.data?['name'] ?? 'Unknown User';
-                                    final dateFormat = _getDateFormat(appointment.scheduledTime);
-                                    
+                                    final userName =
+                                        snapshot.data?['name'] ??
+                                        'Unknown User';
+                                    final dateFormat = _getDateFormat(
+                                      appointment.scheduledTime,
+                                    );
+
                                     return Column(
                                       children: [
                                         ListTile(
-                                          leading: const CircleAvatar(child: Icon(Icons.person)),
+                                          leading: const CircleAvatar(
+                                            child: Icon(Icons.person),
+                                          ),
                                           title: Text(userName),
-                                          subtitle: Text(appointment.type.toString().toUpperCase()),
+                                          subtitle: Text(
+                                            appointment.type
+                                                .toString()
+                                                .toUpperCase(),
+                                          ),
                                           trailing: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
-                                              Text(dateFormat['label'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                              Text(dateFormat['time'] ?? '', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                              Text(
+                                                dateFormat['label'] ?? '',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Text(
+                                                dateFormat['time'] ?? '',
+                                                style: TextStyle(
+                                                  color: Colors.grey[600],
+                                                  fontSize: 12,
+                                                ),
+                                              ),
                                             ],
                                           ),
                                         ),
-                                        if (appointment != _upcomingAppointments.last) const Divider(),
+                                        if (appointment !=
+                                            _upcomingAppointments.last)
+                                          const Divider(),
                                       ],
                                     );
                                   },
@@ -266,7 +345,10 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
 
   Future<Map<String, dynamic>?> _getUserData(String userId) async {
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       return await dbService.readData('users/$userId');
     } catch (e) {
       return null;
@@ -276,10 +358,14 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
   Map<String, String> _getDateFormat(DateTime dateTime) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final appointmentDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
-    
+    final appointmentDate = DateTime(
+      dateTime.year,
+      dateTime.month,
+      dateTime.day,
+    );
+
     final difference = appointmentDate.difference(today).inDays;
-    
+
     String label;
     if (difference == 0) {
       label = 'Today';
@@ -288,9 +374,10 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
     } else {
       label = '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }
-    
-    final time = '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-    
+
+    final time =
+        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+
     return {'label': label, 'time': time};
   }
 
@@ -300,30 +387,34 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
     required String title,
     required String value,
     required Color color,
+    VoidCallback? onTap,
   }) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-          ],
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(icon, size: 32, color: color),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
-

@@ -22,53 +22,47 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   final List<Widget> _screens = [
     const AdminDashboardScreen(),
-    const UsersManagementScreen(),
-    const TherapistsManagementScreen(),
     const ContentApprovalScreen(),
     const AdminProfileScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outlined),
-            selectedIcon: Icon(Icons.people),
-            label: 'Users',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.medical_services_outlined),
-            selectedIcon: Icon(Icons.medical_services),
-            label: 'Therapists',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.approval_outlined),
-            selectedIcon: Icon(Icons.approval),
-            label: 'Content',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        setState(() {
+          _currentIndex = 0;
+        });
+      },
+      child: Scaffold(
+        body: IndexedStack(index: _currentIndex, children: _screens),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Dashboard',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.approval_outlined),
+              selectedIcon: Icon(Icons.approval),
+              label: 'Content',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -95,14 +89,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _loadStats() async {
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
-      
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
+
       final usersData = await dbService.readList('users');
       final therapistsData = await dbService.readList('therapists');
       final resourcesData = await dbService.readList('wellness_resources');
-      
+
       setState(() {
-        _totalUsers = usersData.where((u) => UserModel.fromMap(u).userType == UserType.user).length;
+        _totalUsers = usersData
+            .where((u) => UserModel.fromMap(u).userType == UserType.user)
+            .length;
         _totalTherapists = therapistsData.length;
         _pendingContent = resourcesData
             .where((r) => !WellnessResourceModel.fromMap(r).isApproved)
@@ -119,6 +118,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
+        automaticallyImplyLeading: false, // Remove back button
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -174,13 +174,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            
+
             // Quick Actions
             Text(
               'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             GridView.count(
@@ -196,7 +196,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   title: 'Manage Users',
                   color: Colors.blue,
                   onTap: () {
-                    // Navigation handled by bottom nav
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const UsersManagementScreen(),
+                      ),
+                    );
                   },
                 ),
                 _buildActionCard(
@@ -205,7 +210,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   title: 'Manage Therapists',
                   color: Colors.green,
                   onTap: () {
-                    // Navigation handled by bottom nav
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TherapistsManagementScreen(),
+                      ),
+                    );
                   },
                 ),
                 _buildActionCard(
@@ -214,7 +224,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   title: 'Approve Content',
                   color: Colors.orange,
                   onTap: () {
-                    // Navigation handled by bottom nav
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ContentApprovalScreen(),
+                      ),
+                    );
                   },
                 ),
                 _buildActionCard(
@@ -251,9 +266,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Text(
               value,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -332,7 +347,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: durationController,
-                  decoration: const InputDecoration(labelText: 'Duration (minutes)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Duration (minutes)',
+                  ),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 16),
@@ -363,10 +380,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     descriptionController.text.isNotEmpty &&
                     urlController.text.isNotEmpty) {
                   try {
-                    final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
-                    final authService = Provider.of<AuthService>(context, listen: false);
+                    final dbService = Provider.of<RealtimeDatabaseService>(
+                      context,
+                      listen: false,
+                    );
+                    final authService = Provider.of<AuthService>(
+                      context,
+                      listen: false,
+                    );
                     final adminId = authService.currentUser?.id ?? '';
-                    
+
                     final now = DateTime.now();
                     final resource = WellnessResourceModel(
                       id: const Uuid().v4(),
@@ -380,16 +403,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       approvedBy: adminId,
                       approvedAt: now,
                     );
-                    
+
                     await dbService.writeData(
                       'wellness_resources/${resource.id}',
                       resource.toMap(),
                     );
-                    
+
                     if (context.mounted) {
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Resource added successfully')),
+                        const SnackBar(
+                          content: Text('Resource added successfully'),
+                        ),
                       );
                       _loadStats();
                     }
@@ -410,4 +435,3 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 }
-

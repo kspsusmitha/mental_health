@@ -12,6 +12,8 @@ import '../user/screens/wellness_screen.dart';
 import '../user/screens/therapist_matching_screen.dart';
 import '../user/screens/profile_screen.dart';
 import '../user/screens/community_screen.dart';
+import '../user/screens/user_appointments_screen.dart';
+import '../../screens/auth/module_selection_screen.dart';
 
 class UserHomeScreen extends StatefulWidget {
   const UserHomeScreen({super.key});
@@ -30,53 +32,47 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
   final List<Widget> _screens = [
     const UserDashboardScreen(),
-    const JournalScreen(),
-    const WellnessScreen(),
-    const CommunityScreen(),
+    const UserAppointmentsScreen(),
     const UserProfileScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.book_outlined),
-            selectedIcon: Icon(Icons.book),
-            label: 'Journal',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.spa_outlined),
-            selectedIcon: Icon(Icons.spa),
-            label: 'Wellness',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outlined),
-            selectedIcon: Icon(Icons.people),
-            label: 'Community',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        setState(() {
+          _currentIndex = 0;
+        });
+      },
+      child: Scaffold(
+        body: IndexedStack(index: _currentIndex, children: _screens),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.calendar_today_outlined),
+              selectedIcon: Icon(Icons.calendar_today),
+              label: 'Appointments',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -103,10 +99,12 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
 
   Future<void> _loadUserData() async {
     final authService = Provider.of<AuthService>(context, listen: false);
-    final user = authService.currentUser ?? await authService.getUserData(
-      authService.currentUser?.id ?? '',
-      authService.currentUser?.userType,
-    );
+    final user =
+        authService.currentUser ??
+        await authService.getUserData(
+          authService.currentUser?.id ?? '',
+          authService.currentUser?.userType,
+        );
     if (mounted) {
       setState(() => _currentUser = user);
     }
@@ -121,26 +119,33 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
     }
 
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final authService = Provider.of<AuthService>(context, listen: false);
       final userNodePath = authService.getCurrentUserNodePath();
       if (userNodePath == null) {
         setState(() => _isLoading = false);
         return;
       }
-      
-      final entriesData = await dbService.readList('$userNodePath/$userId/journal_entries');
-      
+
+      final entriesData = await dbService.readList(
+        '$userNodePath/$userId/journal_entries',
+      );
+
       final entries = entriesData
           .map((data) => JournalEntryModel.fromMap(data))
           .toList();
-      
+
       entries.sort((a, b) => b.date.compareTo(a.date));
-      
+
       // Get entries from last 7 days
       final weekAgo = DateTime.now().subtract(const Duration(days: 7));
-      final recentEntries = entries.where((e) => e.date.isAfter(weekAgo)).toList();
-      
+      final recentEntries = entries
+          .where((e) => e.date.isAfter(weekAgo))
+          .toList();
+
       setState(() {
         _recentEntries = recentEntries;
         _isLoading = false;
@@ -150,12 +155,28 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
     }
   }
 
+  Future<void> _signOut(BuildContext context) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await authService.signOut();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const ModuleSelectionScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('MindCare'),
+        automaticallyImplyLeading: false, // Ensure no back arrow on root
         actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => _signOut(context),
+          ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
             onPressed: () {
@@ -178,125 +199,129 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                   children: [
                     // Welcome Card
                     _buildWelcomeCard(context),
-            const SizedBox(height: 24),
-            
-            // Quick Actions
-            Text(
-              'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionCard(
-                    context,
-                    icon: Icons.chat_bubble,
-                    title: 'AI Chat',
-                    color: Colors.blue,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        createAnimatedRoute(const AIChatScreen()),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildActionCard(
-                    context,
-                    icon: Icons.mood,
-                    title: 'Mood Check',
-                    color: Colors.purple,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        createAnimatedRoute(const MoodTrackingScreen()),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionCard(
-                    context,
-                    icon: Icons.book,
-                    title: 'Journal',
-                    color: Colors.orange,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        createAnimatedRoute(const JournalScreen()),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildActionCard(
-                    context,
-                    icon: Icons.spa,
-                    title: 'Wellness',
-                    color: Colors.green,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const WellnessScreen()),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionCard(
-                    context,
-                    icon: Icons.people,
-                    title: 'Community',
-                    color: Colors.teal,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        createAnimatedRoute(const CommunityScreen()),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildActionCard(
-                    context,
-                    icon: Icons.medical_services,
-                    title: 'Find Therapist',
-                    color: Colors.red,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        createAnimatedRoute(const TherapistMatchingScreen()),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
                     const SizedBox(height: 24),
-                    
+
+                    // Quick Actions
+                    Text(
+                      'Quick Actions',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildActionCard(
+                            context,
+                            icon: Icons.chat_bubble,
+                            title: 'AI Chat',
+                            color: Colors.blue,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                createAnimatedRoute(const AIChatScreen()),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildActionCard(
+                            context,
+                            icon: Icons.mood,
+                            title: 'Mood Check',
+                            color: Colors.purple,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                createAnimatedRoute(const MoodTrackingScreen()),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildActionCard(
+                            context,
+                            icon: Icons.book,
+                            title: 'Journal',
+                            color: Colors.orange,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                createAnimatedRoute(const JournalScreen()),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildActionCard(
+                            context,
+                            icon: Icons.spa,
+                            title: 'Wellness',
+                            color: Colors.green,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const WellnessScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildActionCard(
+                            context,
+                            icon: Icons.people,
+                            title: 'Community',
+                            color: Colors.teal,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                createAnimatedRoute(const CommunityScreen()),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildActionCard(
+                            context,
+                            icon: Icons.medical_services,
+                            title: 'Find Therapist',
+                            color: Colors.red,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                createAnimatedRoute(
+                                  const TherapistMatchingScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
                     // Recent Mood Summary
                     Text(
                       'Your Mood This Week',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     _buildMoodSummaryCard(context),
@@ -326,16 +351,16 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
           Text(
             'Welcome back, $userName!',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'How are you feeling today?',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.white.withOpacity(0.9),
-                ),
+              color: Colors.white.withOpacity(0.9),
+            ),
           ),
           const SizedBox(height: 16),
           ElevatedButton(
@@ -376,9 +401,9 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
               const SizedBox(height: 8),
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -397,7 +422,10 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
               children: [
                 Icon(Icons.mood_outlined, size: 48, color: Colors.grey[400]),
                 const SizedBox(height: 16),
-                Text('No mood data this week', style: TextStyle(color: Colors.grey[600])),
+                Text(
+                  'No mood data this week',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
@@ -462,7 +490,11 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                     moodColors[entry.mood] ?? Colors.grey,
                   );
                 } else {
-                  return _buildMoodDay(day, Icons.circle_outlined, Colors.grey[300]!);
+                  return _buildMoodDay(
+                    day,
+                    Icons.circle_outlined,
+                    Colors.grey[300]!,
+                  );
                 }
               }).toList(),
             ),
@@ -487,12 +519,8 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: 4),
-        Text(
-          day,
-          style: const TextStyle(fontSize: 12),
-        ),
+        Text(day, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
 }
-

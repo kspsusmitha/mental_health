@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
+import '../../widgets/animated_background.dart';
 import 'login_screen.dart';
 
 class ModuleSelectionScreen extends StatefulWidget {
@@ -24,21 +25,16 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _animationController.forward();
   }
@@ -60,10 +56,7 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
               begin: const Offset(1.0, 0.0),
               end: Offset.zero,
             ).animate(animation),
-            child: FadeTransition(
-              opacity: animation,
-              child: child,
-            ),
+            child: FadeTransition(opacity: animation, child: child),
           );
         },
         transitionDuration: const Duration(milliseconds: 400),
@@ -73,19 +66,12 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF667EEA),
-              const Color(0xFF764BA2),
-            ],
-          ),
-        ),
-        child: SafeArea(
+    return AnimatedBackground(
+      imageUrl:
+          'https://images.unsplash.com/photo-1544367563-12123d8965cd?q=80&w=2070&auto=format&fit=crop',
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
@@ -133,7 +119,8 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                     const SizedBox(height: 40),
                     Text(
                       'Welcome to MindCare',
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      style: Theme.of(context).textTheme.headlineLarge
+                          ?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -143,8 +130,8 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                     Text(
                       'Select your account type to continue',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.white.withOpacity(0.9),
-                          ),
+                        color: Colors.white.withOpacity(0.9),
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 48),
@@ -153,7 +140,8 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                       context,
                       icon: Icons.person,
                       title: 'User',
-                      description: 'Access AI support, mood tracking, journal, and wellness resources',
+                      description:
+                          'Access AI support, mood tracking, journal, and wellness resources',
                       color: Colors.blue,
                       onTap: () => _navigateToLogin(UserType.user),
                       delay: 0,
@@ -164,7 +152,8 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                       context,
                       icon: Icons.medical_services,
                       title: 'Therapist',
-                      description: 'Manage appointments, clients, and provide therapy sessions',
+                      description:
+                          'Manage appointments, clients, and provide therapy sessions',
                       color: Colors.green,
                       onTap: () => _navigateToLogin(UserType.therapist),
                       delay: 100,
@@ -175,7 +164,8 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                       context,
                       icon: Icons.admin_panel_settings,
                       title: 'Admin',
-                      description: 'Manage users, therapists, and approve wellness content',
+                      description:
+                          'Manage users, therapists, and approve wellness content',
                       color: Colors.orange,
                       onTap: () => _navigateToLogin(UserType.admin),
                       delay: 200,
@@ -215,9 +205,7 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
       },
       child: Card(
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
@@ -242,16 +230,13 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                       Text(
                         title,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         description,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
                       ),
                     ],
                   ),
@@ -269,4 +254,3 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
     );
   }
 }
-

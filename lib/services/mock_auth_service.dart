@@ -6,15 +6,19 @@ class MockAuthService {
   UserModel? get currentUser => _currentUser;
 
   // Mock sign in
-  Future<UserModel?> signInWithEmailPassword(String email, String password) async {
+  Future<UserModel?> signInWithEmailPassword(
+    String email,
+    String password,
+  ) async {
     await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
-    
+
     // Mock authentication - accept any email/password for demo
     if (email.isNotEmpty && password.isNotEmpty) {
       _currentUser = UserModel(
         id: 'mock_user_${DateTime.now().millisecondsSinceEpoch}',
         email: email,
         name: email.split('@')[0],
+        password: password,
         userType: UserType.user,
         createdAt: DateTime.now(),
       );
@@ -31,11 +35,12 @@ class MockAuthService {
     UserType userType,
   ) async {
     await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
-    
+
     _currentUser = UserModel(
       id: 'mock_user_${DateTime.now().millisecondsSinceEpoch}',
       email: email,
       name: name,
+      password: password,
       userType: userType,
       createdAt: DateTime.now(),
     );
@@ -59,4 +64,3 @@ class MockAuthService {
     return Stream.value(_currentUser);
   }
 }
-

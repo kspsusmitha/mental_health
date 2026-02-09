@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import '../models/user_model.dart';
+import '../models/therapist_model.dart';
 import 'realtime_database_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../modules/admin/admin_credentials.dart';
@@ -8,7 +9,7 @@ import '../modules/admin/admin_credentials.dart';
 class AuthService {
   final RealtimeDatabaseService _database = RealtimeDatabaseService();
   UserModel? _currentUser;
-  
+
   // Get current user
   UserModel? get currentUser => _currentUser;
 
@@ -41,7 +42,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('current_user_id');
       final userTypeStr = prefs.getString('current_user_type');
-      
+
       if (userId != null && userTypeStr != null) {
         final userType = UserType.fromString(userTypeStr);
         _currentUser = await getUserData(userId, userType);
@@ -66,12 +67,12 @@ class AuthService {
   }) async {
     try {
       UserModel? foundUser;
-      
+
       // If user type is specified, check only that node
       if (selectedUserType != null) {
         final nodePath = _getNodePath(selectedUserType);
         final usersData = await _database.readList(nodePath);
-        
+
         for (var userData in usersData) {
           try {
             final user = UserModel.fromMap(userData);
@@ -92,7 +93,8 @@ class AuthService {
             for (var userData in usersData) {
               try {
                 final user = UserModel.fromMap(userData);
-                if (user.email.toLowerCase().trim() == email.toLowerCase().trim()) {
+                if (user.email.toLowerCase().trim() ==
+                    email.toLowerCase().trim()) {
                   foundUser = user;
                   break;
                 }
@@ -130,7 +132,7 @@ class AuthService {
 
       // Set current user
       _currentUser = foundUser;
-      
+
       // Save to shared preferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('current_user_id', foundUser.id);
@@ -152,7 +154,9 @@ class AuthService {
     try {
       // Prevent admin registration - admins have predefined credentials
       if (userType == UserType.admin) {
-        throw Exception('Admin registration is not allowed. Admins have predefined credentials.');
+        throw Exception(
+          'Admin registration is not allowed. Admins have predefined credentials.',
+        );
       }
 
       // Validate inputs
@@ -166,7 +170,7 @@ class AuthService {
       // Check if email already exists in the specific node
       try {
         final usersData = await _database.readList(nodePath);
-        
+
         for (var userData in usersData) {
           try {
             final user = UserModel.fromMap(userData);
@@ -192,45 +196,89 @@ class AuthService {
 
       // Generate user ID
       final userId = DateTime.now().millisecondsSinceEpoch.toString();
-      
+
       // Hash password
       final passwordHash = _hashPassword(password);
 
       // Create user model
-      final userModel = UserModel(
-        id: userId,
-        email: email.trim(),
-        name: name.trim(),
-        userType: userType,
-        createdAt: DateTime.now(),
-      );
+      if (userType == UserType.therapist) {
+        // For therapist, create TherapistModel with default values
+        // Note: isVerified is set to true for now to allow immediate testing/visibility
+        // In a real app, this should probably be false until admin approval
+        final therapistModel = TherapistModel(
+          id: userId,
+          userId: userId,
+          name: name.trim(),
+          email: email.trim(),
+          password: password, // Saving plain text password
+          specialization: 'General Therapist', // Default
+          bio: 'No bio available yet.', // Default
+          isVerified: false, // Must be verified by admin
+          rating: 5.0, // Default start rating
+          totalSessions: 0,
+        );
 
-      // Save user data to the appropriate node
-      await _database.writeData(
-        '$nodePath/$userId',
-        userModel.toMap(),
-      );
+        // Save therapist data to therapists node
+        await _database.writeData('therapists/$userId', therapistModel.toMap());
 
-      // Save authentication data (password hash)
-      await _database.writeData(
-        'auth/$userId',
-        {
+        // Also create a basic user entry for auth referencing
+        final basicUser = UserModel(
+          id: userId,
+          email: email.trim(),
+          name: name.trim(),
+          password: password,
+          userType: userType,
+          createdAt: DateTime.now(),
+        );
+
+        // Return this for immediate local use
+        _currentUser = basicUser;
+
+        // Save authentication data (password hash)
+        await _database.writeData('auth/$userId', {
           'email': email.toLowerCase().trim(),
           'passwordHash': passwordHash,
           'userType': userType.toString(),
           'createdAt': DateTime.now().millisecondsSinceEpoch,
-        },
-      );
+        });
 
-      // Set current user
-      _currentUser = userModel;
-      
-      // Save to shared preferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('current_user_id', userId);
-      await prefs.setString('current_user_type', userType.toString());
+        // Save to shared preferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('current_user_id', userId);
+        await prefs.setString('current_user_type', userType.toString());
 
-      return userModel;
+        return basicUser;
+      } else {
+        // Standard user
+        final userModel = UserModel(
+          id: userId,
+          email: email.trim(),
+          name: name.trim(),
+          password: password,
+          userType: userType,
+          createdAt: DateTime.now(),
+        );
+
+        // Save user data to the appropriate node
+        await _database.writeData('$nodePath/$userId', userModel.toMap());
+
+        _currentUser = userModel;
+
+        // Save authentication data (password hash)
+        await _database.writeData('auth/$userId', {
+          'email': email.toLowerCase().trim(),
+          'passwordHash': passwordHash,
+          'userType': userType.toString(),
+          'createdAt': DateTime.now().millisecondsSinceEpoch,
+        });
+
+        // Save to shared preferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('current_user_id', userId);
+        await prefs.setString('current_user_type', userType.toString());
+
+        return userModel;
+      }
     } catch (e) {
       // Re-throw if it's already a formatted exception
       if (e.toString().contains('Email already registered')) {
@@ -260,7 +308,7 @@ class AuthService {
         }
         return null;
       }
-      
+
       // Otherwise check all nodes
       final nodes = ['users', 'therapists', 'admins'];
       for (var node in nodes) {
@@ -286,7 +334,7 @@ class AuthService {
         // Check only the specified node
         final nodePath = _getNodePath(userType);
         final usersData = await _database.readList(nodePath);
-        
+
         for (var userData in usersData) {
           try {
             final user = UserModel.fromMap(userData);
@@ -299,7 +347,7 @@ class AuthService {
         }
         return null;
       }
-      
+
       // Check all nodes
       final nodes = ['users', 'therapists', 'admins'];
       for (var node in nodes) {
@@ -308,7 +356,8 @@ class AuthService {
           for (var userData in usersData) {
             try {
               final user = UserModel.fromMap(userData);
-              if (user.email.toLowerCase().trim() == email.toLowerCase().trim()) {
+              if (user.email.toLowerCase().trim() ==
+                  email.toLowerCase().trim()) {
                 return user;
               }
             } catch (e) {
@@ -339,7 +388,11 @@ class AuthService {
   }
 
   // Reset password
-  Future<void> resetPassword(String email, String newPassword, {UserType? userType}) async {
+  Future<void> resetPassword(
+    String email,
+    String newPassword, {
+    UserType? userType,
+  }) async {
     try {
       final user = await getUserByEmail(email, userType: userType);
       if (user == null) {
@@ -347,13 +400,10 @@ class AuthService {
       }
 
       final passwordHash = _hashPassword(newPassword);
-      await _database.updateData(
-        'auth/${user.id}',
-        {
-          'passwordHash': passwordHash,
-          'updatedAt': DateTime.now().millisecondsSinceEpoch,
-        },
-      );
+      await _database.updateData('auth/${user.id}', {
+        'passwordHash': passwordHash,
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      });
     } catch (e) {
       throw Exception('Password reset failed: $e');
     }
@@ -373,8 +423,9 @@ class AuthService {
         // If admin doesn't exist, create it
         if (existingAdmin == null) {
           // Generate admin ID (using timestamp for uniqueness)
-          final adminId = 'admin_${DateTime.now().millisecondsSinceEpoch}_${adminAccount.email.hashCode}';
-          
+          final adminId =
+              'admin_${DateTime.now().millisecondsSinceEpoch}_${adminAccount.email.hashCode}';
+
           // Hash password
           final passwordHash = _hashPassword(adminAccount.password);
 
@@ -383,26 +434,21 @@ class AuthService {
             id: adminId,
             email: adminAccount.email.trim(),
             name: adminAccount.name.trim(),
+            password: adminAccount.password,
             userType: UserType.admin,
             createdAt: DateTime.now(),
           );
 
           // Save admin data to admins node
-          await _database.writeData(
-            'admins/$adminId',
-            adminModel.toMap(),
-          );
+          await _database.writeData('admins/$adminId', adminModel.toMap());
 
           // Save authentication data (password hash)
-          await _database.writeData(
-            'auth/$adminId',
-            {
-              'email': adminAccount.email.toLowerCase().trim(),
-              'passwordHash': passwordHash,
-              'userType': UserType.admin.toString(),
-              'createdAt': DateTime.now().millisecondsSinceEpoch,
-            },
-          );
+          await _database.writeData('auth/$adminId', {
+            'email': adminAccount.email.toLowerCase().trim(),
+            'passwordHash': passwordHash,
+            'userType': UserType.admin.toString(),
+            'createdAt': DateTime.now().millisecondsSinceEpoch,
+          });
         }
       }
     } catch (e) {

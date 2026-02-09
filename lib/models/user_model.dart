@@ -2,6 +2,7 @@ class UserModel {
   final String id;
   final String email;
   final String name;
+  final String password; // Storing plain text password as requested
   final String? profileImageUrl;
   final UserType userType;
   final DateTime createdAt;
@@ -11,6 +12,7 @@ class UserModel {
     required this.id,
     required this.email,
     required this.name,
+    required this.password,
     this.profileImageUrl,
     required this.userType,
     required this.createdAt,
@@ -22,6 +24,7 @@ class UserModel {
       id: map['id'] ?? '',
       email: map['email'] ?? '',
       name: map['name'] ?? '',
+      password: map['password'] ?? '',
       profileImageUrl: map['profileImageUrl'],
       userType: UserType.fromString(map['userType'] ?? 'user'),
       createdAt: map['createdAt'] != null
@@ -36,6 +39,7 @@ class UserModel {
       'id': id,
       'email': email,
       'name': name,
+      'password': password,
       'profileImageUrl': profileImageUrl,
       'userType': userType.toString(),
       'createdAt': createdAt.millisecondsSinceEpoch,
@@ -72,4 +76,3 @@ enum UserType {
     }
   }
 }
-

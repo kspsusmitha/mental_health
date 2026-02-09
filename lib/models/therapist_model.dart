@@ -3,10 +3,13 @@ class TherapistModel {
   final String userId;
   final String name;
   final String specialization;
+  final String email;
+  final String password; // Storing plain text password as requested
   final String bio;
   final String? profileImageUrl;
   final List<String> ageGroups; // e.g., ['adolescent', 'adult', 'senior']
-  final List<String> specializations; // e.g., ['anxiety', 'depression', 'stress']
+  final List<String>
+  specializations; // e.g., ['anxiety', 'depression', 'stress']
   final double rating;
   final int totalSessions;
   final bool isVerified;
@@ -17,6 +20,8 @@ class TherapistModel {
     required this.id,
     required this.userId,
     required this.name,
+    required this.email,
+    required this.password,
     required this.specialization,
     required this.bio,
     this.profileImageUrl,
@@ -34,6 +39,8 @@ class TherapistModel {
       id: map['id'] ?? '',
       userId: map['userId'] ?? '',
       name: map['name'] ?? '',
+      email: map['email'] ?? '',
+      password: map['password'] ?? '',
       specialization: map['specialization'] ?? '',
       bio: map['bio'] ?? '',
       profileImageUrl: map['profileImageUrl'],
@@ -52,6 +59,8 @@ class TherapistModel {
       'id': id,
       'userId': userId,
       'name': name,
+      'email': email,
+      'password': password,
       'specialization': specialization,
       'bio': bio,
       'profileImageUrl': profileImageUrl,
@@ -65,4 +74,3 @@ class TherapistModel {
     };
   }
 }
-
