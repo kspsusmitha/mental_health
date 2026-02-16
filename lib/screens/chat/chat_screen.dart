@@ -6,6 +6,8 @@ import '../../services/mock_firestore_service.dart';
 import '../../services/mock_auth_service.dart';
 import '../../models/message_model.dart';
 import '../../models/emotion_analysis_model.dart';
+import '../../widgets/animated_background.dart';
+import '../../widgets/glass_container.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -36,13 +38,14 @@ class _ChatScreenState extends State<ChatScreen> {
       if (user != null) {
         setState(() => _currentUserId = user.id);
         await _loadChatHistory();
-        
+
         // Add welcome message if no chat history
         if (_chatHistory.isEmpty) {
           setState(() {
             _chatHistory.add({
               'user': '',
-              'assistant': 'Hello! I\'m your AI Wellness Assistant. I\'m here to listen and support you. How are you feeling today?'
+              'assistant':
+                  'Hello! I\'m your AI Wellness Assistant. I\'m here to listen and support you. How are you feeling today?',
             });
           });
         }
@@ -52,7 +55,8 @@ class _ChatScreenState extends State<ChatScreen> {
           _currentUserId = 'guest_user';
           _chatHistory.add({
             'user': '',
-            'assistant': 'Hello! I\'m your AI Wellness Assistant. Please sign in to save your chat history.'
+            'assistant':
+                'Hello! I\'m your AI Wellness Assistant. Please sign in to save your chat history.',
           });
         });
       }
@@ -63,11 +67,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _loadChatHistory() async {
     if (_currentUserId == null) return;
-    
+
     try {
-      final firestoreService = Provider.of<MockFirestoreService>(context, listen: false);
-      final messages = await firestoreService.getMessages(_currentUserId!).first;
-      
+      final firestoreService = Provider.of<MockFirestoreService>(
+        context,
+        listen: false,
+      );
+      final messages = await firestoreService
+          .getMessages(_currentUserId!)
+          .first;
+
       setState(() {
         _chatHistory.clear();
         // Group messages by conversation pairs
@@ -88,7 +97,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || _isLoading || _currentUserId == null) return;
+    if (_messageController.text.trim().isEmpty ||
+        _isLoading ||
+        _currentUserId == null)
+      return;
 
     final userMessage = _messageController.text.trim();
     _messageController.clear();
@@ -103,7 +115,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       final aiService = Provider.of<AIService>(context, listen: false);
-      final firestoreService = Provider.of<MockFirestoreService>(context, listen: false);
+      final firestoreService = Provider.of<MockFirestoreService>(
+        context,
+        listen: false,
+      );
 
       // Save user message
       final userMsg = MessageModel(
@@ -154,7 +169,8 @@ class _ChatScreenState extends State<ChatScreen> {
       } catch (e) {
         debugPrint('AI response error: $e');
         // Fallback response if API fails
-        aiResponse = 'I understand you\'re going through something. While I\'m here to listen, '
+        aiResponse =
+            'I understand you\'re going through something. While I\'m here to listen, '
             'it\'s important to remember that I\'m not a replacement for professional help. '
             'Would you like to talk more about what\'s on your mind?';
       }
@@ -185,7 +201,9 @@ class _ChatScreenState extends State<ChatScreen> {
       await firestoreService.saveEmotionAnalysis(emotionAnalysis);
 
       // Show risk warning if needed
-      if (mounted && (emotionAnalysis.riskLevel == 'high' || emotionAnalysis.riskLevel == 'critical')) {
+      if (mounted &&
+          (emotionAnalysis.riskLevel == 'high' ||
+              emotionAnalysis.riskLevel == 'critical')) {
         _showRiskWarning(emotionAnalysis);
       }
 
@@ -253,97 +271,99 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(Icons.smart_toy, color: Color(0xFF667EEA)),
-            ),
-            SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('AI Wellness Assistant'),
-                Text(
-                  'Always here to help',
-                  style: TextStyle(fontSize: 12),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _chatHistory.isEmpty && !_isLoading
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Start a conversation',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 18,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _chatHistory.length + (_isLoading ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _chatHistory.length) {
-                        return const _LoadingMessage();
-                      }
-
-                      final entry = _chatHistory[index];
-                      return Column(
-                        children: [
-                          if (entry['user']!.isNotEmpty)
-                            _UserMessage(text: entry['user']!),
-                          if (entry['assistant']!.isNotEmpty)
-                            _AssistantMessage(text: entry['assistant']!),
-                        ],
-                      );
-                    },
+    return AnimatedBackground(
+      imageUrl:
+          'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&q=80',
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: const BackButton(color: Colors.white),
+          title: const Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.white24,
+                child: Icon(Icons.smart_toy, color: Colors.white),
+              ),
+              SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AI Assistant',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
+                  Text(
+                    'Always here to help',
+                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, -2),
-                ),
-              ],
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: _chatHistory.isEmpty && !_isLoading
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.chat_bubble_outline,
+                            size: 64,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Start a conversation',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _chatHistory.length + (_isLoading ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == _chatHistory.length) {
+                          return const _LoadingMessage();
+                        }
+
+                        final entry = _chatHistory[index];
+                        return Column(
+                          children: [
+                            if (entry['user']!.isNotEmpty)
+                              _UserMessage(text: entry['user']!),
+                            if (entry['assistant']!.isNotEmpty)
+                              _AssistantMessage(text: entry['assistant']!),
+                          ],
+                        );
+                      },
+                    ),
             ),
-            child: SafeArea(
+            GlassContainer(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(8),
+              borderRadius: BorderRadius.circular(30),
+              opacity: 0.2,
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _messageController,
-                      decoration: InputDecoration(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
                         hintText: 'Type your message...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
+                        hintStyle: TextStyle(color: Colors.white70),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
                         ),
@@ -360,20 +380,18 @@ class _ChatScreenState extends State<ChatScreen> {
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
-                        : const Icon(Icons.send),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.all(12),
-                    ),
+                        : const Icon(Icons.send, color: Colors.white),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -401,24 +419,19 @@ class _UserMessage extends StatelessWidget {
       child: Align(
         alignment: Alignment.centerRight,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 8, left: 48),
+          margin: const EdgeInsets.only(bottom: 12, left: 48),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Theme.of(context).colorScheme.primary,
-                Theme.of(context).colorScheme.primary.withOpacity(0.8),
-              ],
-            ),
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-              bottomLeft: Radius.circular(16),
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+              bottomLeft: Radius.circular(20),
             ),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                blurRadius: 8,
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -455,15 +468,16 @@ class _AssistantMessage extends StatelessWidget {
       child: Align(
         alignment: Alignment.centerLeft,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 8, right: 48),
+          margin: const EdgeInsets.only(bottom: 12, right: 48),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: Colors.white.withOpacity(0.2),
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-              bottomRight: Radius.circular(16),
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+              bottomRight: Radius.circular(20),
             ),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,14 +485,14 @@ class _AssistantMessage extends StatelessWidget {
             children: [
               const CircleAvatar(
                 radius: 12,
-                backgroundColor: Color(0xFF667EEA),
+                backgroundColor: Colors.white24,
                 child: Icon(Icons.smart_toy, size: 16, color: Colors.white),
               ),
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
                   text,
-                  style: const TextStyle(fontSize: 15),
+                  style: const TextStyle(fontSize: 15, color: Colors.white),
                 ),
               ),
             ],
@@ -497,11 +511,11 @@ class _LoadingMessage extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8, right: 48),
+        margin: const EdgeInsets.only(bottom: 12, right: 48),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -509,14 +523,16 @@ class _LoadingMessage extends StatelessWidget {
             SizedBox(
               width: 16,
               height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
             ),
             SizedBox(width: 8),
-            Text('Thinking...'),
+            Text('Thinking...', style: TextStyle(color: Colors.white70)),
           ],
         ),
       ),
     );
   }
 }
-

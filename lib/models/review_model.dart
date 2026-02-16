@@ -26,7 +26,9 @@ class ReviewModel {
       rating: (map['rating'] ?? 0.0).toDouble(),
       comment: map['comment'] ?? '',
       createdAt: map['createdAt'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int)
+          ? DateTime.fromMillisecondsSinceEpoch(
+              (map['createdAt'] as num).toInt(),
+            )
           : DateTime.now(),
     );
   }

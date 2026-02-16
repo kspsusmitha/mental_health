@@ -10,6 +10,8 @@ import '../../../services/recommendation_service.dart';
 import '../../../models/emotion_analysis_model.dart';
 import '../../../models/journal_entry_model.dart';
 import '../../../utils/page_transitions.dart';
+import '../../../widgets/animated_background.dart';
+import '../../../widgets/glass_container.dart';
 import 'wellness_screen.dart';
 import 'journal_screen.dart';
 import 'therapist_matching_screen.dart';
@@ -109,10 +111,14 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
   }
 
   Future<void> _saveMoodCheck() async {
-    if (_selectedMood == null && _selectedEmotions.isEmpty && _descriptionController.text.trim().isEmpty) {
+    if (_selectedMood == null &&
+        _selectedEmotions.isEmpty &&
+        _descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select at least one emotion or describe how you feel'),
+          content: Text(
+            'Please select at least one emotion or describe how you feel',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -130,38 +136,47 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final aiService = Provider.of<AIService>(context, listen: false);
       final userNodePath = authService.getCurrentUserNodePath();
-      
+
       if (userNodePath == null) {
         setState(() => _isAnalyzing = false);
         return;
       }
-      
+
       final currentUser = authService.currentUser;
       if (currentUser == null) {
         setState(() => _isAnalyzing = false);
         return;
       }
 
-      final username = currentUser.name.toLowerCase().replaceAll(' ', '_');
+      final userId = currentUser.id;
       final today = DateTime.now();
       final dateKey = DateFormat('yyyy-MM-dd').format(today);
 
       // Check if mood check already exists for today
       try {
-        final existingMoodChecks = await dbService.readList('$userNodePath/$username/mood_checks');
+        final existingMoodChecks = await dbService.readList(
+          '$userNodePath/$userId/mood_checks',
+        );
         for (var checkData in existingMoodChecks) {
           try {
             if (checkData['date'] != null) {
-              final checkDate = DateTime.fromMillisecondsSinceEpoch(checkData['date'] as int);
+              final checkDate = DateTime.fromMillisecondsSinceEpoch(
+                checkData['date'] as int,
+              );
               final checkDateKey = DateFormat('yyyy-MM-dd').format(checkDate);
               if (checkDateKey == dateKey) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('You already have a mood check for today (${DateFormat('MMM dd, yyyy').format(today)}). Only one mood check per day is allowed.'),
+                      content: Text(
+                        'You already have a mood check for today (${DateFormat('MMM dd, yyyy').format(today)}). Only one mood check per day is allowed.',
+                      ),
                       backgroundColor: Colors.orange,
                       duration: const Duration(seconds: 3),
                     ),
@@ -181,16 +196,22 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
 
       // Also check journal entries for today
       try {
-        final existingEntries = await dbService.readList('$userNodePath/$username/journal_entries');
+        final existingEntries = await dbService.readList(
+          '$userNodePath/$userId/journal_entries',
+        );
         for (var entryData in existingEntries) {
           try {
             final existingEntry = JournalEntryModel.fromMap(entryData);
-            final existingDateKey = DateFormat('yyyy-MM-dd').format(existingEntry.date);
+            final existingDateKey = DateFormat(
+              'yyyy-MM-dd',
+            ).format(existingEntry.date);
             if (existingDateKey == dateKey) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('You already have a journal entry for today (${DateFormat('MMM dd, yyyy').format(today)}). Only one entry per day is allowed.'),
+                    content: Text(
+                      'You already have a journal entry for today (${DateFormat('MMM dd, yyyy').format(today)}). Only one entry per day is allowed.',
+                    ),
                     backgroundColor: Colors.orange,
                     duration: const Duration(seconds: 3),
                   ),
@@ -215,7 +236,9 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
           : 'Emotions: $emotionsText';
 
       // Load journal history for context
-      final journalData = await dbService.readList('$userNodePath/$username/journal_entries');
+      final journalData = await dbService.readList(
+        '$userNodePath/$userId/journal_entries',
+      );
       final journalHistory = journalData.take(5).toList();
 
       // Analyze with AI
@@ -226,11 +249,13 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       );
 
       // Determine mood from selection or AI
-      String mood = _selectedMood?.toLowerCase().replaceAll(' ', '_') ?? 
-                    analysis.primaryEmotion.toLowerCase();
+      String mood =
+          _selectedMood?.toLowerCase().replaceAll(' ', '_') ??
+          analysis.primaryEmotion.toLowerCase();
 
       // Calculate mood score from intensity and AI analysis
-      final moodScore = (_moodIntensity / 10.0) * 0.5 + (analysis.overallScore * 0.5);
+      final moodScore =
+          (_moodIntensity / 10.0) * 0.5 + (analysis.overallScore * 0.5);
 
       // Save mood check details
       final moodCheckData = {
@@ -248,7 +273,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       };
 
       await dbService.writeData(
-        '$userNodePath/$username/mood_checks/${moodCheckData['id']}',
+        '$userNodePath/$userId/mood_checks/${moodCheckData['id']}',
         moodCheckData,
       );
 
@@ -256,8 +281,8 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       final entry = JournalEntryModel(
         id: const Uuid().v4(),
         userId: _currentUserId!,
-        content: descriptionText.isNotEmpty 
-            ? descriptionText 
+        content: descriptionText.isNotEmpty
+            ? descriptionText
             : 'Mood check: ${_selectedEmotions.join(", ")}',
         mood: mood,
         moodScore: moodScore.clamp(0.0, 1.0),
@@ -268,18 +293,19 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       );
 
       await dbService.writeData(
-        '$userNodePath/$username/journal_entries/${entry.id}',
+        '$userNodePath/$userId/journal_entries/${entry.id}',
         entry.toMap(),
       );
 
       // Save mood analysis
       await dbService.pushData(
-        '$userNodePath/$username/mood_analyses',
+        '$userNodePath/$userId/mood_analyses',
         analysis.toMap(),
       );
 
       // Get personalized recommendations based on current mood
-      final recommendations = await _recommendationService.getPersonalizedRecommendations(_currentUserId!);
+      final recommendations = await _recommendationService
+          .getPersonalizedRecommendations(_currentUserId!);
 
       setState(() {
         _analysisResult = analysis;
@@ -290,7 +316,9 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Mood check saved successfully for ${DateFormat('MMM dd, yyyy').format(today)}!'),
+            content: Text(
+              'Mood check saved successfully for ${DateFormat('MMM dd, yyyy').format(today)}!',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -308,14 +336,48 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
     }
   }
 
+  Future<void> _loadMoodHistory() async {
+    if (_currentUserId == null) return;
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
+      final userNodePath = authService.getCurrentUserNodePath();
+      if (userNodePath == null) return;
+
+      final moodChecksData = await dbService.readList(
+        '$userNodePath/$_currentUserId/mood_checks',
+      );
+
+      setState(() {
+        _moodChecks = moodChecksData;
+      });
+    } catch (e) {
+      debugPrint('Error loading mood history: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Mood Check-In'),
+        title: const Text(
+          'Mood Check-In',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: Icon(_showCalendar ? Icons.check_circle_outline : Icons.calendar_today),
+            icon: Icon(
+              _showCalendar ? Icons.check_circle_outline : Icons.calendar_today,
+              color: Colors.white,
+            ),
             onPressed: () {
               setState(() {
                 _showCalendar = !_showCalendar;
@@ -331,7 +393,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
           ),
           if (_analysisResult != null)
             IconButton(
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh, color: Colors.white),
               onPressed: () {
                 setState(() {
                   _selectedEmotions.clear();
@@ -345,323 +407,416 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
             ),
         ],
       ),
-      body: _showCalendar
-          ? _buildMoodCalendarView()
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Welcome Card
-            Card(
-              elevation: 2,
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1518531933037-8845d583afa2?auto=format&fit=crop&q=80',
+        child: _showCalendar
+            ? _buildMoodCalendarView()
+            : SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      Icons.mood,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'How are you feeling right now?',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Take a moment to check in with yourself',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
+                    // Welcome Card
+                    GlassContainer(
+                      opacity: 0.1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Icon(Icons.mood, size: 48, color: Colors.white),
+                            const SizedBox(height: 12),
+                            Text(
+                              'How are you feeling right now?',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Take a moment to check in with yourself',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-            // Overall Mood Selection
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.sentiment_satisfied, color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Overall Mood',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _moodOptions.map((mood) {
-                        final isSelected = _selectedMood == mood;
-                        return FilterChip(
-                          label: Text(mood),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() => _selectedMood = selected ? mood : null);
-                          },
-                          selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                          checkmarkColor: Theme.of(context).colorScheme.primary,
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Mood Intensity Slider
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.speed, color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Intensity Level',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '${_moodIntensity.toInt()}/10',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Slider(
-                      value: _moodIntensity,
-                      min: 1,
-                      max: 10,
-                      divisions: 9,
-                      label: _moodIntensity.toInt().toString(),
-                      onChanged: (value) {
-                        setState(() => _moodIntensity = value);
-                      },
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Low', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                        Text('High', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Emotion Checkboxes
-            ..._emotionSuggestions.entries.map((entry) {
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            entry.key == 'Positive'
-                                ? Icons.emoji_emotions
-                                : entry.key == 'Negative'
-                                    ? Icons.sentiment_dissatisfied
-                                    : Icons.sentiment_neutral,
-                            color: entry.key == 'Positive'
-                                ? Colors.green
-                                : entry.key == 'Negative'
-                                    ? Colors.red
-                                    : Colors.grey,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            entry.key,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
+                    // Overall Mood Selection
+                    GlassContainer(
+                      opacity: 0.1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.sentiment_satisfied,
+                                  color: Colors.white,
                                 ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: entry.value.map((emotion) {
-                          final isSelected = _selectedEmotions.contains(emotion);
-                          return FilterChip(
-                            label: Text(emotion),
-                            selected: isSelected,
-                            onSelected: (_) => _toggleEmotion(emotion),
-                            selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                            checkmarkColor: Theme.of(context).colorScheme.primary,
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-
-            const SizedBox(height: 16),
-
-            // Description Text Field
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.edit_note, color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Describe Your Feelings',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Overall Mood',
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _moodOptions.map((mood) {
+                                final isSelected = _selectedMood == mood;
+                                return FilterChip(
+                                  label: Text(mood),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    setState(
+                                      () => _selectedMood = selected
+                                          ? mood
+                                          : null,
+                                    );
+                                  },
+                                  selectedColor: Colors.white.withOpacity(0.3),
+                                  checkmarkColor: Colors.white,
+                                  backgroundColor: Colors.white10,
+                                  labelStyle: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.white70,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                    side: BorderSide(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.white24,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Optional: Add more details about what you\'re experiencing',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    TextField(
-                      controller: _descriptionController,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                        hintText: 'What\'s on your mind? What\'s causing these feelings?',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+
+                    // Mood Intensity Slider
+                    GlassContainer(
+                      opacity: 0.1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.speed, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Intensity Level',
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              '${_moodIntensity.toInt()}/10',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                activeTrackColor: Colors.white,
+                                inactiveTrackColor: Colors.white24,
+                                thumbColor: Colors.white,
+                                overlayColor: Colors.white.withOpacity(0.1),
+                                valueIndicatorColor: Colors.white,
+                                valueIndicatorTextStyle: const TextStyle(
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              child: Slider(
+                                value: _moodIntensity,
+                                min: 1,
+                                max: 10,
+                                divisions: 9,
+                                label: _moodIntensity.toInt().toString(),
+                                onChanged: (value) {
+                                  setState(() => _moodIntensity = value);
+                                },
+                              ),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Low',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  'High',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        filled: true,
-                        fillColor: Colors.grey[50],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-            // Save Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isAnalyzing ? null : _saveMoodCheck,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                      child: _isAnalyzing
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.check_circle_outline),
-                          SizedBox(width: 8),
-                          Text(
-                            'Save Mood Check',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    // Emotion Checkboxes
+                    ..._emotionSuggestions.entries.map((entry) {
+                      return GlassContainer(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        opacity: 0.1,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    entry.key == 'Positive'
+                                        ? Icons.emoji_emotions
+                                        : entry.key == 'Negative'
+                                        ? Icons.sentiment_dissatisfied
+                                        : Icons.sentiment_neutral,
+                                    color: entry.key == 'Positive'
+                                        ? Colors.greenAccent
+                                        : entry.key == 'Negative'
+                                        ? Colors.redAccent
+                                        : Colors.white70,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    entry.key,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: entry.value.map((emotion) {
+                                  final isSelected = _selectedEmotions.contains(
+                                    emotion,
+                                  );
+                                  return FilterChip(
+                                    label: Text(emotion),
+                                    selected: isSelected,
+                                    onSelected: (_) => _toggleEmotion(emotion),
+                                    selectedColor: Colors.white.withOpacity(
+                                      0.3,
+                                    ),
+                                    checkmarkColor: Colors.white,
+                                    backgroundColor: Colors.white10,
+                                    labelStyle: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.white70,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                      side: BorderSide(
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.white24,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+
+                    const SizedBox(height: 16),
+
+                    // Description Text Field
+                    GlassContainer(
+                      opacity: 0.1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.edit_note, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Describe Your Feelings',
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Optional: Add more details about what you\'re experiencing',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _descriptionController,
+                              maxLines: 5,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText:
+                                    'What\'s on your mind? What\'s causing these feelings?',
+                                hintStyle: const TextStyle(
+                                  color: Colors.white54,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Colors.white24,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Colors.white24,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.05),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 24),
+
+                    // Save Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isAnalyzing ? null : _saveMoodCheck,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.blue,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isAnalyzing
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check_circle_outline),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Save Mood Check',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+
+                    // Analysis Results
+                    if (_analysisResult != null) ...[
+                      const SizedBox(height: 24),
+                      _buildAnalysisResult(_analysisResult!),
+                    ],
+
+                    // Personalized Recommendations
+                    if (_recommendations.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _buildRecommendationsSection(),
+                    ],
                   ],
                 ),
               ),
-            ),
-
-            // Analysis Results
-            if (_analysisResult != null) ...[
-              const SizedBox(height: 24),
-              _buildAnalysisResult(_analysisResult!),
-            ],
-
-            // Personalized Recommendations
-            if (_recommendations.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              _buildRecommendationsSection(),
-            ],
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildAnalysisResult(EmotionAnalysisModel analysis) {
-    return Card(
-      elevation: 4,
-      child: Container(
+    return GlassContainer(
+      opacity: 0.2,
+      child: Padding(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.blue[50]!,
-              Colors.purple[50]!,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.insights, color: Theme.of(context).colorScheme.primary, size: 28),
+                Icon(Icons.insights, color: Colors.white, size: 28),
                 const SizedBox(width: 8),
-            Text(
-              'Analysis Results',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                Text(
+                  'Analysis Results',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
-            ),
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -674,26 +829,36 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
             Text(
               'Suggested Actions',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 12),
-            ...analysis.suggestedActions.map((action) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.green[600], size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          action,
-                          style: const TextStyle(fontSize: 14),
+            ...analysis.suggestedActions.map(
+              (action) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.greenAccent,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        action,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.white,
                         ),
                       ),
-                    ],
-                  ),
-                )),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -704,29 +869,33 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue[200]!),
+        border: Border.all(color: Colors.white24),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: Colors.white70,
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-            value.toUpperCase(),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.primary,
+              value.toUpperCase(),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
                 fontSize: 12,
+                color: Colors.white,
               ),
             ),
           ),
@@ -736,630 +905,440 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
   }
 
   Widget _buildScoreCard(String label, double score) {
-    final color = score < 0.3
-        ? Colors.red
-        : score < 0.5
-            ? Colors.orange
-            : score < 0.7
-                ? Colors.yellow
-                : Colors.green;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-            ),
-            Text(
-              '${(score * 100).toStringAsFixed(0)}%',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: color,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-          value: score,
-            minHeight: 8,
-            backgroundColor: Colors.grey[200],
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRiskCard(String label, String value) {
-    Color riskColor;
-    IconData riskIcon;
-    switch (value.toLowerCase()) {
-      case 'critical':
-        riskColor = Colors.red;
-        riskIcon = Icons.warning;
-        break;
-      case 'high':
-        riskColor = Colors.orange;
-        riskIcon = Icons.warning_amber;
-        break;
-      case 'medium':
-        riskColor = Colors.yellow[700]!;
-        riskIcon = Icons.info;
-        break;
-      default:
-        riskColor = Colors.green;
-        riskIcon = Icons.check_circle;
-    }
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: riskColor.withOpacity(0.1),
+        color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: riskColor, width: 2),
+        border: Border.all(color: Colors.white24),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: Colors.white70,
+            ),
+          ),
           Row(
             children: [
-              Icon(riskIcon, color: riskColor),
-              const SizedBox(width: 8),
-          Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+              Text(
+                (score * 100).toInt().toString(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.white,
+                ),
+              ),
+              const Text(
+                '/100',
+                style: TextStyle(fontSize: 14, color: Colors.white54),
               ),
             ],
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: riskColor,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              value.toUpperCase(),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 12,
-              ),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRecommendationsSection() {
-    return Card(
-      elevation: 4,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.amber[50]!,
-              Colors.orange[50]!,
+  Widget _buildRiskCard(String label, String risk) {
+    Color riskColor;
+    if (risk.toLowerCase() == 'high') {
+      riskColor = Colors.redAccent;
+    } else if (risk.toLowerCase() == 'medium') {
+      riskColor = Colors.orangeAccent;
+    } else {
+      riskColor = Colors.greenAccent;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: riskColor.withOpacity(0.5)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: Colors.white70,
+            ),
+          ),
+          Row(
+            children: [
+              Icon(
+                risk.toLowerCase() == 'high'
+                    ? Icons.warning
+                    : risk.toLowerCase() == 'medium'
+                    ? Icons.info
+                    : Icons.check_circle,
+                color: riskColor,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                risk.toUpperCase(),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: riskColor,
+                ),
+              ),
             ],
           ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.lightbulb, color: Colors.amber[700], size: 28),
-                const SizedBox(width: 8),
-                Text(
-                  'Personalized Recommendations',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Based on your current mood, here are some suggestions',
-              style: TextStyle(color: Colors.grey[700], fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            ..._recommendations.take(5).map((recommendation) => _buildRecommendationCard(recommendation)),
-          ],
-        ),
+        ],
       ),
+    );
+  }
+
+  // Recommendations Section
+  Widget _buildRecommendationsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.recommend, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                'Recommended for You',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _recommendations.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final recommendation = _recommendations[index];
+            return _buildRecommendationCard(recommendation);
+          },
+        ),
+      ],
     );
   }
 
   Widget _buildRecommendationCard(Recommendation recommendation) {
-    final icon = _getRecommendationIcon(recommendation.type);
-    final color = _getRecommendationColor(recommendation.type);
-    final priorityColor = _getPriorityColor(recommendation.priority);
+    IconData icon;
+    Color color;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: recommendation.priority == RecommendationPriority.high ? 3 : 1,
-      child: InkWell(
-        onTap: () => _handleRecommendationTap(recommendation),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            recommendation.title,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: priorityColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            recommendation.priority.toString().split('.').last.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: priorityColor,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      recommendation.description,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
-            ],
+    switch (recommendation.type) {
+      case RecommendationType.meditation:
+      case RecommendationType.breathing:
+        icon = Icons.self_improvement;
+        color = Colors.purpleAccent;
+        break;
+      case RecommendationType.journaling:
+        icon = Icons.edit_note;
+        color = Colors.blueAccent;
+        break;
+      case RecommendationType.therapy:
+        icon = Icons.people;
+        color = Colors.greenAccent;
+        break;
+      case RecommendationType.wellness:
+        icon = Icons.spa;
+        color = Colors.orangeAccent;
+        break;
+    }
+
+    return GlassContainer(
+      opacity: 0.1,
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color),
+        ),
+        title: Text(
+          recommendation.title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              recommendation.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: Colors.white54,
+        ),
+        onTap: () {
+          if (recommendation.type == RecommendationType.journaling) {
+            Navigator.push(context, createAnimatedRoute(const JournalScreen()));
+          } else if (recommendation.type == RecommendationType.therapy) {
+            Navigator.push(
+              context,
+              createAnimatedRoute(const TherapistMatchingScreen()),
+            );
+          } else if (recommendation.type == RecommendationType.wellness ||
+              recommendation.type == RecommendationType.meditation ||
+              recommendation.type == RecommendationType.breathing) {
+            Navigator.push(
+              context,
+              createAnimatedRoute(const WellnessScreen()),
+            );
+          }
+        },
       ),
     );
   }
 
-  IconData _getRecommendationIcon(RecommendationType type) {
-    switch (type) {
-      case RecommendationType.meditation:
-        return Icons.self_improvement;
-      case RecommendationType.journaling:
-        return Icons.book;
-      case RecommendationType.breathing:
-        return Icons.air;
-      case RecommendationType.therapy:
-        return Icons.medical_services;
-      case RecommendationType.wellness:
-        return Icons.spa;
-    }
-  }
-
-  Color _getRecommendationColor(RecommendationType type) {
-    switch (type) {
-      case RecommendationType.meditation:
-        return Colors.purple;
-      case RecommendationType.journaling:
-        return Colors.orange;
-      case RecommendationType.breathing:
-        return Colors.blue;
-      case RecommendationType.therapy:
-        return Colors.green;
-      case RecommendationType.wellness:
-        return Colors.teal;
-    }
-  }
-
-  Color _getPriorityColor(RecommendationPriority priority) {
-    switch (priority) {
-      case RecommendationPriority.high:
-        return Colors.red;
-      case RecommendationPriority.medium:
-        return Colors.orange;
-      case RecommendationPriority.low:
-        return Colors.green;
-    }
-  }
-
-  void _handleRecommendationTap(Recommendation recommendation) {
-    switch (recommendation.type) {
-      case RecommendationType.journaling:
-        Navigator.push(
-          context,
-          createAnimatedRoute(const JournalScreen()),
-        );
-        break;
-      case RecommendationType.wellness:
-      case RecommendationType.meditation:
-      case RecommendationType.breathing:
-        Navigator.push(
-          context,
-          createAnimatedRoute(const WellnessScreen()),
-        );
-        break;
-      case RecommendationType.therapy:
-        Navigator.push(
-          context,
-          createAnimatedRoute(const TherapistMatchingScreen()),
-        );
-        break;
-    }
-  }
-
-  Future<void> _loadMoodHistory() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
-    final userNodePath = authService.getCurrentUserNodePath();
-    final currentUser = authService.currentUser;
-    
-    if (userNodePath == null || currentUser == null) return;
-
-    try {
-      final username = currentUser.name.toLowerCase().replaceAll(' ', '_');
-      final moodChecksData = await dbService.readList('$userNodePath/$username/mood_checks');
-      
-      setState(() {
-        _moodChecks = moodChecksData;
-      });
-    } catch (e) {
-      // Error loading mood checks
-    }
-  }
-
   Widget _buildMoodCalendarView() {
-    final moodColors = {
-      'happy': Colors.pink[300]!,
-      'sad': Colors.pink[400]!,
-      'anxious': Colors.pink[500]!,
-      'stressed': Colors.pink[600]!,
-      'angry': Colors.pink[700]!,
-      'neutral': Colors.pink[200]!,
-      'depressed': Colors.pink[800]!,
-      'overwhelmed': Colors.pink[900]!,
-    };
-
-    // Create a map of dates to mood checks
-    final Map<DateTime, List<Map<String, dynamic>>> moodChecksByDate = {};
-    for (var check in _moodChecks) {
-      if (check['date'] != null) {
-        final date = DateTime.fromMillisecondsSinceEpoch(check['date'] as int);
-        final dateKey = DateTime(date.year, date.month, date.day);
-        moodChecksByDate.putIfAbsent(dateKey, () => []).add(check);
-      }
-    }
-
-    // Get mood check for selected day
-    Map<String, dynamic>? selectedDayMoodCheck;
-    if (_selectedDay != null) {
-      final selectedDate = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
-      final checks = moodChecksByDate[selectedDate];
-      if (checks != null && checks.isNotEmpty) {
-        selectedDayMoodCheck = checks.first;
-      }
-    }
-
     return Column(
       children: [
-        // Calendar Widget
-        Card(
-          margin: const EdgeInsets.all(16),
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: TableCalendar<Map<String, dynamic>>(
-            firstDay: DateTime(2020),
+        GlassContainer(
+          margin: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+          opacity: 0.1,
+          child: TableCalendar(
+            firstDay: DateTime.utc(2020, 1, 1),
             lastDay: DateTime.now(),
             focusedDay: _focusedDay,
             calendarFormat: _calendarFormat,
             selectedDayPredicate: (day) {
               return isSameDay(_selectedDay, day);
             },
-            eventLoader: (day) {
-              final date = DateTime(day.year, day.month, day.day);
-              return moodChecksByDate[date] ?? [];
-            },
             onDaySelected: (selectedDay, focusedDay) {
-              if (!isSameDay(_selectedDay, selectedDay)) {
-                setState(() {
-                  _selectedDay = selectedDay;
-                  _focusedDay = focusedDay;
-                });
-              }
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
             },
             onFormatChanged: (format) {
-              if (_calendarFormat != format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
-              }
+              setState(() {
+                _calendarFormat = format;
+              });
             },
             onPageChanged: (focusedDay) {
               _focusedDay = focusedDay;
             },
-            calendarStyle: CalendarStyle(
-              outsideDaysVisible: false,
-              todayDecoration: BoxDecoration(
-                color: Colors.pink[200],
+            calendarStyle: const CalendarStyle(
+              defaultTextStyle: TextStyle(color: Colors.white),
+              weekendTextStyle: TextStyle(color: Colors.white70),
+              outsideTextStyle: TextStyle(color: Colors.white24),
+              selectedDecoration: BoxDecoration(
+                color: Colors.blueAccent,
                 shape: BoxShape.circle,
               ),
-              selectedDecoration: BoxDecoration(
-                color: Colors.pink[600],
+              todayDecoration: BoxDecoration(
+                color: Colors.white24,
                 shape: BoxShape.circle,
               ),
               markerDecoration: BoxDecoration(
-                color: Colors.pink[400],
+                color: Colors.greenAccent,
                 shape: BoxShape.circle,
               ),
-              markersMaxCount: 1,
-              markerSize: 6,
-              weekendTextStyle: TextStyle(color: Colors.pink[700]),
             ),
-            headerStyle: HeaderStyle(
-              formatButtonVisible: true,
-              titleCentered: true,
-              formatButtonShowsNext: false,
+            headerStyle: const HeaderStyle(
+              formatButtonTextStyle: TextStyle(color: Colors.white),
               formatButtonDecoration: BoxDecoration(
-                color: Colors.pink[100],
-                borderRadius: BorderRadius.circular(8),
+                border: Border.fromBorderSide(BorderSide(color: Colors.white)),
+                borderRadius: BorderRadius.all(Radius.circular(12.0)),
               ),
-              formatButtonTextStyle: TextStyle(color: Colors.pink[900]),
-              leftChevronIcon: Icon(Icons.chevron_left, color: Colors.pink[700]),
-              rightChevronIcon: Icon(Icons.chevron_right, color: Colors.pink[700]),
+              titleTextStyle: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+              leftChevronIcon: Icon(Icons.chevron_left, color: Colors.white),
+              rightChevronIcon: Icon(Icons.chevron_right, color: Colors.white),
             ),
-            daysOfWeekStyle: DaysOfWeekStyle(
-              weekdayStyle: TextStyle(color: Colors.pink[700], fontWeight: FontWeight.bold),
-              weekendStyle: TextStyle(color: Colors.pink[600], fontWeight: FontWeight.bold),
-            ),
-            calendarBuilders: CalendarBuilders<Map<String, dynamic>>(
-              markerBuilder: (context, date, List<Map<String, dynamic>>? events) {
-                if (events != null && events.isNotEmpty) {
-                  final check = events.first;
-                  final mood = check['mood'] as String? ?? 'neutral';
-                  final moodColor = moodColors[mood] ?? Colors.pink[400]!;
-                  return Positioned(
-                    bottom: 1,
-                    child: Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: moodColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+            eventLoader: (day) {
+              // Check if we have mood check for this day
+              final dateKey = DateFormat('yyyy-MM-dd').format(day);
+              final hasCheck = _moodChecks.any((check) {
+                if (check['date'] != null) {
+                  final checkDate = DateTime.fromMillisecondsSinceEpoch(
+                    check['date'] as int,
                   );
+                  return DateFormat('yyyy-MM-dd').format(checkDate) == dateKey;
                 }
-                return null;
-              },
-              todayBuilder: (context, date, focusedDay) {
-                final isSelected = isSameDay(_selectedDay, date);
-                final dateKey = DateTime(date.year, date.month, date.day);
-                final checksForDate = moodChecksByDate[dateKey];
-                final check = checksForDate != null && checksForDate.isNotEmpty ? checksForDate.first : null;
-                final mood = check?['mood'] as String? ?? 'neutral';
-                final moodColor = check != null ? (moodColors[mood] ?? Colors.pink[200]!) : Colors.pink[200]!;
-                
-                return Container(
-                  margin: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.pink[600] : moodColor.withOpacity(0.3),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.pink[600]!,
-                      width: isSelected ? 2 : 1,
+                return false;
+              });
+              return hasCheck ? ['Check'] : [];
+            },
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_selectedDay != null) ...[
+                  Text(
+                    'Mood History for ${DateFormat('MMM dd, yyyy').format(_selectedDay!)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
-                  child: Center(
-                    child: Text(
-                      '${date.day}',
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.pink[900],
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                );
-              },
-              selectedBuilder: (context, date, focusedDay) {
-                final dateKey = DateTime(date.year, date.month, date.day);
-                final checksForDate = moodChecksByDate[dateKey];
-                final check = checksForDate != null && checksForDate.isNotEmpty ? checksForDate.first : null;
-                final mood = check?['mood'] as String? ?? 'neutral';
-                final moodColor = check != null ? (moodColors[mood] ?? Colors.pink[600]!) : Colors.pink[600]!;
-                
-                return Container(
-                  margin: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: moodColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.pink[900]!,
-                      width: 2,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${date.day}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                );
-              },
+                  const SizedBox(height: 16),
+                  _buildMoodCheckForDate(_selectedDay!),
+                ],
+              ],
             ),
           ),
         ),
-        // Selected Day Mood Check Details
-        if (_selectedDay != null && selectedDayMoodCheck != null)
-          Expanded(
-            child: Card(
-              margin: const EdgeInsets.all(16),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Mood Check - ${DateFormat('MMM dd, yyyy').format(_selectedDay!)}',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.pink[900],
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildMoodCheckDetailCard(selectedDayMoodCheck),
-                  ],
-                ),
-              ),
-            ),
-          )
-        else if (_selectedDay != null && selectedDayMoodCheck == null)
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.mood_outlined, size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No mood check for ${DateFormat('MMM dd, yyyy').format(_selectedDay!)}',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-          ),
       ],
     );
   }
 
-  Widget _buildMoodCheckDetailCard(Map<String, dynamic> moodCheck) {
-    final mood = moodCheck['mood'] as String? ?? 'neutral';
-    final moodScore = (moodCheck['moodScore'] as num?)?.toDouble() ?? 0.0;
-    final intensity = (moodCheck['moodIntensity'] as num?)?.toDouble() ?? 0.0;
-    final emotions = (moodCheck['selectedEmotions'] as List<dynamic>?)?.cast<String>() ?? [];
-    final description = moodCheck['description'] as String? ?? '';
+  Widget _buildMoodCheckForDate(DateTime date) {
+    final dateKey = DateFormat('yyyy-MM-dd').format(date);
+    final check = _moodChecks.firstWhere((check) {
+      if (check['date'] != null) {
+        final checkDate = DateTime.fromMillisecondsSinceEpoch(
+          check['date'] as int,
+        );
+        return DateFormat('yyyy-MM-dd').format(checkDate) == dateKey;
+      }
+      return false;
+    }, orElse: () => {});
 
+    if (check.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(32),
+        child: Center(
+          child: Text(
+            'No mood check recorded for this day',
+            style: TextStyle(color: Colors.white54),
+          ),
+        ),
+      );
+    }
+
+    return _buildMoodCheckDetailCard(check);
+  }
+
+  Widget _buildMoodCheckDetailCard(Map<String, dynamic> check) {
+    final mood = check['mood'] as String? ?? 'neutral';
+    final moodScore = check['moodScore'] as double? ?? 0.5;
+    final description = check['description'] as String? ?? '';
+    final emotions = (check['selectedEmotions'] as List?)?.cast<String>() ?? [];
+
+    // Mood Colors & Icons
     final moodColors = {
-      'happy': Colors.pink[300]!,
-      'sad': Colors.pink[400]!,
-      'anxious': Colors.pink[500]!,
-      'stressed': Colors.pink[600]!,
-      'angry': Colors.pink[700]!,
-      'neutral': Colors.pink[200]!,
-      'depressed': Colors.pink[800]!,
-      'overwhelmed': Colors.pink[900]!,
+      'happy': Colors.greenAccent,
+      'sad': Colors.blueAccent,
+      'anxious': Colors.orangeAccent,
+      'stressed': Colors.redAccent,
+      'angry': Colors.red,
+      'neutral': Colors.grey,
+      'depressed': Colors.purpleAccent,
+      'overwhelmed': Colors.deepOrangeAccent,
+      'excited': Colors.yellowAccent,
     };
 
-    final moodColor = moodColors[mood] ?? Colors.pink[400]!;
+    final moodIcons = {
+      'happy': Icons.sentiment_very_satisfied,
+      'sad': Icons.sentiment_dissatisfied,
+      'anxious': Icons.sentiment_very_dissatisfied,
+      'stressed': Icons.sentiment_dissatisfied,
+      'angry': Icons.sentiment_very_dissatisfied,
+      'neutral': Icons.sentiment_neutral,
+      'depressed': Icons.sentiment_dissatisfied,
+      'overwhelmed': Icons.sentiment_dissatisfied,
+      'excited': Icons.sentiment_very_satisfied,
+    };
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: moodColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: moodColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: moodColor,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  mood.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+    final color = moodColors[mood.toLowerCase()] ?? Colors.grey;
+    final icon = moodIcons[mood.toLowerCase()] ?? Icons.sentiment_neutral;
+
+    return GlassContainer(
+      opacity: 0.1,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 32),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        mood.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                      Text(
+                        'Score: ${(moodScore * 100).toInt()}%',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
+              ],
+            ),
+            if (description.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Divider(color: Colors.white12),
+              const SizedBox(height: 16),
               Text(
-                'Score: ${(moodScore * 100).toInt()}%',
-                style: TextStyle(
-                  color: Colors.pink[900],
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                'Intensity: ${intensity.toInt()}/10',
-                style: TextStyle(
-                  color: Colors.pink[700],
-                  fontSize: 12,
-                ),
+                description,
+                style: const TextStyle(fontSize: 16, color: Colors.white),
               ),
             ],
-          ),
-          if (emotions.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: emotions.map((emotion) {
-                return Chip(
-                  label: Text(emotion),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  backgroundColor: Colors.pink[100],
-                  labelStyle: TextStyle(color: Colors.pink[900], fontSize: 11),
-                );
-              }).toList(),
-            ),
-          ],
-          if (description.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              description,
-              style: TextStyle(
-                color: Colors.pink[900],
-                fontSize: 14,
+            if (emotions.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: emotions.map((emotion) {
+                  return Chip(
+                    label: Text(emotion, style: const TextStyle(fontSize: 12)),
+                    backgroundColor: Colors.white10,
+                    labelStyle: const TextStyle(color: Colors.white),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 0,
+                    ),
+                  );
+                }).toList(),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

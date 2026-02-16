@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../widgets/animated_background.dart';
+import '../../widgets/glass_container.dart';
 import 'login_screen.dart';
 
 class ModuleSelectionScreen extends StatefulWidget {
@@ -67,8 +68,6 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
   @override
   Widget build(BuildContext context) {
     return AnimatedBackground(
-      imageUrl:
-          'https://images.unsplash.com/photo-1544367563-12123d8965cd?q=80&w=2070&auto=format&fit=crop',
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -142,7 +141,7 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                       title: 'User',
                       description:
                           'Access AI support, mood tracking, journal, and wellness resources',
-                      color: Colors.blue,
+                      color: Colors.blueAccent,
                       onTap: () => _navigateToLogin(UserType.user),
                       delay: 0,
                     ),
@@ -154,7 +153,7 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                       title: 'Therapist',
                       description:
                           'Manage appointments, clients, and provide therapy sessions',
-                      color: Colors.green,
+                      color: Colors.greenAccent,
                       onTap: () => _navigateToLogin(UserType.therapist),
                       delay: 100,
                     ),
@@ -166,7 +165,7 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                       title: 'Admin',
                       description:
                           'Manage users, therapists, and approve wellness content',
-                      color: Colors.orange,
+                      color: Colors.orangeAccent,
                       onTap: () => _navigateToLogin(UserType.admin),
                       delay: 200,
                     ),
@@ -203,9 +202,9 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
           ),
         );
       },
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: GlassContainer(
+        opacity: 0.1,
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
@@ -217,7 +216,7 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: color, size: 32),
@@ -231,21 +230,18 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                         title,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         description,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        style: TextStyle(color: Colors.white70, fontSize: 13),
                       ),
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.grey[400],
-                  size: 20,
-                ),
+                Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 20),
               ],
             ),
           ),

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../services/recommendation_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../utils/page_transitions.dart';
+import '../../../widgets/animated_background.dart';
+import '../../../widgets/glass_container.dart';
 import 'journal_screen.dart';
 import 'wellness_screen.dart';
 import 'therapist_matching_screen.dart';
@@ -31,7 +33,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       final authService = Provider.of<AuthService>(context, listen: false);
       final userId = authService.currentUser?.id;
       if (userId != null) {
-        final recommendations = await _recommendationService.getPersonalizedRecommendations(userId);
+        final recommendations = await _recommendationService
+            .getPersonalizedRecommendations(userId);
         setState(() {
           _recommendations = recommendations;
           _isLoading = false;
@@ -47,18 +50,12 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   void _handleRecommendationTap(Recommendation recommendation) {
     switch (recommendation.type) {
       case RecommendationType.journaling:
-        Navigator.push(
-          context,
-          createAnimatedRoute(const JournalScreen()),
-        );
+        Navigator.push(context, createAnimatedRoute(const JournalScreen()));
         break;
       case RecommendationType.wellness:
       case RecommendationType.meditation:
       case RecommendationType.breathing:
-        Navigator.push(
-          context,
-          createAnimatedRoute(const WellnessScreen()),
-        );
+        Navigator.push(context, createAnimatedRoute(const WellnessScreen()));
         break;
       case RecommendationType.therapy:
         Navigator.push(
@@ -87,56 +84,69 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   Color _getRecommendationColor(RecommendationType type) {
     switch (type) {
       case RecommendationType.meditation:
-        return Colors.purple;
+        return Colors.purpleAccent;
       case RecommendationType.journaling:
-        return Colors.orange;
+        return Colors.orangeAccent;
       case RecommendationType.breathing:
-        return Colors.blue;
+        return Colors.blueAccent;
       case RecommendationType.therapy:
-        return Colors.green;
+        return Colors.greenAccent;
       case RecommendationType.wellness:
-        return Colors.teal;
+        return Colors.tealAccent;
     }
   }
 
   Color _getPriorityColor(RecommendationPriority priority) {
     switch (priority) {
       case RecommendationPriority.high:
-        return Colors.red;
+        return Colors.redAccent;
       case RecommendationPriority.medium:
-        return Colors.orange;
+        return Colors.orangeAccent;
       case RecommendationPriority.low:
-        return Colors.green;
+        return Colors.greenAccent;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Personalized Recommendations'),
+        title: const Text(
+          'Personalized Recommendations',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _loadRecommendations,
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _recommendations.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadRecommendations,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _recommendations.length,
-                    itemBuilder: (context, index) {
-                      final recommendation = _recommendations[index];
-                      return _buildRecommendationCard(recommendation);
-                    },
-                  ),
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?auto=format&fit=crop&q=80',
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : _recommendations.isEmpty
+            ? _buildEmptyState()
+            : RefreshIndicator(
+                onRefresh: _loadRecommendations,
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                  itemCount: _recommendations.length,
+                  itemBuilder: (context, index) {
+                    final recommendation = _recommendations[index];
+                    return _buildRecommendationCard(recommendation);
+                  },
                 ),
+              ),
+      ),
     );
   }
 
@@ -145,16 +155,16 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.lightbulb_outline, size: 64, color: Colors.grey[400]),
+          const Icon(Icons.lightbulb_outline, size: 64, color: Colors.white54),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'No recommendations yet',
-            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+            style: TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Start using the app to get personalized suggestions',
-            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+            style: TextStyle(color: Colors.white54, fontSize: 14),
             textAlign: TextAlign.center,
           ),
         ],
@@ -167,12 +177,11 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     final color = _getRecommendationColor(recommendation.type);
     final priorityColor = _getPriorityColor(recommendation.priority);
 
-    return Card(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: recommendation.priority == RecommendationPriority.high ? 4 : 2,
+      opacity: 0.1,
       child: InkWell(
         onTap: () => _handleRecommendationTap(recommendation),
-        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -181,7 +190,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 28),
@@ -196,19 +205,28 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                         Expanded(
                           child: Text(
                             recommendation.title,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: priorityColor.withOpacity(0.1),
+                            color: priorityColor.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            recommendation.priority.toString().split('.').last.toUpperCase(),
+                            recommendation.priority
+                                .toString()
+                                .split('.')
+                                .last
+                                .toUpperCase(),
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -221,9 +239,10 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       recommendation.description,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey[600],
-                          ),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -237,7 +256,11 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.white54,
+              ),
             ],
           ),
         ),

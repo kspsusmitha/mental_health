@@ -7,6 +7,8 @@ import '../../../models/community_post_model.dart';
 import '../../../models/community_comment_model.dart';
 import '../../../models/user_model.dart';
 import '../../../utils/page_transitions.dart';
+import '../../../widgets/animated_background.dart';
+import '../../../widgets/glass_container.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -42,15 +44,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Future<void> _loadPosts() async {
     setState(() => _isLoading = true);
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final postsData = await dbService.readList('community_posts');
-      
+
       setState(() {
         _posts = postsData
             .map((data) => CommunityPostModel.fromMap(data))
             .where((post) => post.isApproved) // Only show approved posts
             .toList();
-        
+
         // Sort by creation date (newest first)
         _posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         _isLoading = false;
@@ -115,9 +120,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     if (result == true) {
       try {
-        final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+        final dbService = Provider.of<RealtimeDatabaseService>(
+          context,
+          listen: false,
+        );
         final postId = const Uuid().v4();
-        
+
         final post = CommunityPostModel(
           id: postId,
           userId: _currentUserId!,
@@ -129,10 +137,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           isApproved: false, // Needs admin approval
         );
 
-        await dbService.writeData(
-          'community_posts/$postId',
-          post.toMap(),
-        );
+        await dbService.writeData('community_posts/$postId', post.toMap());
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -161,7 +166,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     final isLiked = post.likedBy.contains(_currentUserId!);
     final newLikedBy = List<String>.from(post.likedBy);
-    
+
     if (isLiked) {
       newLikedBy.remove(_currentUserId!);
     } else {
@@ -169,20 +174,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
 
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
-      await dbService.updateData(
-        'community_posts/${post.id}',
-        {
-          'likesCount': isLiked ? post.likesCount - 1 : post.likesCount + 1,
-          'likedBy': newLikedBy,
-        },
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
       );
+      await dbService.updateData('community_posts/${post.id}', {
+        'likesCount': isLiked ? post.likesCount - 1 : post.likesCount + 1,
+        'likedBy': newLikedBy,
+      });
       _loadPosts();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -190,35 +195,49 @@ class _CommunityScreenState extends State<CommunityScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Community'),
+        title: const Text('Community', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: _createPost,
             tooltip: 'Create Post',
+            color: Colors.white,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadPosts,
             tooltip: 'Refresh',
+            color: Colors.white,
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _posts.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadPosts,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _posts.length,
-                    itemBuilder: (context, index) {
-                      return _buildPostCard(_posts[index]);
-                    },
-                  ),
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1518531933037-8845d583afa2?auto=format&fit=crop&q=80',
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : _posts.isEmpty
+            ? _buildEmptyState()
+            : RefreshIndicator(
+                onRefresh: _loadPosts,
+                color: Colors.white,
+                backgroundColor: Colors.white24,
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                  itemCount: _posts.length,
+                  itemBuilder: (context, index) {
+                    return _buildPostCard(_posts[index]);
+                  },
                 ),
+              ),
+      ),
     );
   }
 
@@ -227,22 +246,26 @@ class _CommunityScreenState extends State<CommunityScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+          Icon(Icons.people_outline, size: 64, color: Colors.white60),
           const SizedBox(height: 16),
           Text(
             'No posts yet',
-            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+            style: TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 8),
           Text(
             'Be the first to share your experience!',
-            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+            style: TextStyle(color: Colors.white54, fontSize: 14),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _createPost,
             icon: const Icon(Icons.add),
             label: const Text('Create Post'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.blue,
+            ),
           ),
         ],
       ),
@@ -250,12 +273,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _buildPostCard(CommunityPostModel post) {
-    final isLiked = _currentUserId != null && post.likedBy.contains(_currentUserId!);
+    final isLiked =
+        _currentUserId != null && post.likedBy.contains(_currentUserId!);
 
-    return Card(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 16),
+      opacity: 0.2,
       child: InkWell(
         onTap: () => _showPostDetail(post),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -266,11 +292,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 children: [
                   CircleAvatar(
                     radius: 20,
+                    backgroundColor: Colors.white24,
                     backgroundImage: post.userProfileImageUrl != null
                         ? NetworkImage(post.userProfileImageUrl!)
                         : null,
                     child: post.userProfileImageUrl == null
-                        ? Text(post.userName[0].toUpperCase())
+                        ? Text(
+                            post.userName[0].toUpperCase(),
+                            style: const TextStyle(color: Colors.white),
+                          )
                         : null,
                   ),
                   const SizedBox(width: 12),
@@ -283,12 +313,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
+                            color: Colors.white,
                           ),
                         ),
                         Text(
                           _formatDate(post.createdAt),
-                          style: TextStyle(
-                            color: Colors.grey[600],
+                          style: const TextStyle(
+                            color: Colors.white70,
                             fontSize: 12,
                           ),
                         ),
@@ -302,8 +333,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
               Text(
                 post.title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 8),
               // Content (truncated)
@@ -311,16 +343,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 post.content,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.grey[700]),
+                style: const TextStyle(color: Colors.white70),
               ),
               if (post.content.length > 150) ...[
                 const SizedBox(height: 4),
                 Text(
                   'Read more...',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.lightBlueAccent, fontSize: 12),
                 ),
               ],
               const SizedBox(height: 12),
@@ -329,14 +358,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 4,
-                  children: post.tags!.map((tag) => Chip(
-                        label: Text(
-                          tag,
-                          style: const TextStyle(fontSize: 12),
+                  children: post.tags!
+                      .map(
+                        (tag) => Chip(
+                          label: Text(
+                            tag,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          backgroundColor: Colors.white10,
+                          labelStyle: const TextStyle(color: Colors.white),
+                          padding: EdgeInsets.zero,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          side: BorderSide.none,
                         ),
-                        padding: EdgeInsets.zero,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      )).toList(),
+                      )
+                      .toList(),
                 ),
               const SizedBox(height: 12),
               // Actions
@@ -345,19 +382,28 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   IconButton(
                     icon: Icon(
                       isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: isLiked ? Colors.red : Colors.grey,
+                      color: isLiked ? Colors.redAccent : Colors.white70,
                     ),
                     onPressed: () => _toggleLike(post),
                   ),
-                  Text('${post.likesCount}'),
+                  Text(
+                    '${post.likesCount}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
                   const SizedBox(width: 24),
-                  const Icon(Icons.comment_outlined, color: Colors.grey),
+                  const Icon(Icons.comment_outlined, color: Colors.white70),
                   const SizedBox(width: 8),
-                  Text('${post.commentsCount}'),
+                  Text(
+                    '${post.commentsCount}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
                   const Spacer(),
                   TextButton(
                     onPressed: () => _showPostDetail(post),
-                    child: const Text('View Comments'),
+                    child: const Text(
+                      'View Comments',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
@@ -436,15 +482,20 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Future<void> _loadComments() async {
     setState(() => _isLoading = true);
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
-      final commentsData = await dbService.readList('community_posts/${widget.post.id}/comments');
-      
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
+      final commentsData = await dbService.readList(
+        'community_posts/${widget.post.id}/comments',
+      );
+
       setState(() {
         _comments = commentsData
             .map((data) => CommunityCommentModel.fromMap(data))
             .where((comment) => comment.isApproved)
             .toList();
-        
+
         _comments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         _isLoading = false;
       });
@@ -458,9 +509,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     if (_commentController.text.trim().isEmpty) return;
 
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final commentId = const Uuid().v4();
-      
+
       final comment = CommunityCommentModel(
         id: commentId,
         postId: widget.post.id,
@@ -477,24 +531,23 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       );
 
       // Update comment count
-      await dbService.updateData(
-        'community_posts/${widget.post.id}',
-        {'commentsCount': widget.post.commentsCount + 1},
-      );
+      await dbService.updateData('community_posts/${widget.post.id}', {
+        'commentsCount': widget.post.commentsCount + 1,
+      });
 
       _commentController.clear();
       _loadComments();
-      
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Comment added')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Comment added')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -502,139 +555,176 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Post Details'),
+        title: const Text(
+          'Post Details',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Column(
-        children: [
-          // Post content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Post header
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundImage: widget.post.userProfileImageUrl != null
-                            ? NetworkImage(widget.post.userProfileImageUrl!)
-                            : null,
-                        child: widget.post.userProfileImageUrl == null
-                            ? Text(widget.post.userName[0].toUpperCase())
-                            : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.post.userName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Text(
-                              _formatDate(widget.post.createdAt),
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1518531933037-8845d583afa2?auto=format&fit=crop&q=80',
+        child: Column(
+          children: [
+            // Post content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Post header
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: Colors.white24,
+                          backgroundImage:
+                              widget.post.userProfileImageUrl != null
+                              ? NetworkImage(widget.post.userProfileImageUrl!)
+                              : null,
+                          child: widget.post.userProfileImageUrl == null
+                              ? Text(
+                                  widget.post.userName[0].toUpperCase(),
+                                  style: const TextStyle(color: Colors.white),
+                                )
+                              : null,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.post.title,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.post.content,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[800]),
-                  ),
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 16),
-                  // Comments section
-                  Text(
-                    'Comments (${_comments.length})',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _comments.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(32),
-                                child: Text(
-                                  'No comments yet. Be the first to comment!',
-                                  style: TextStyle(color: Colors.grey[600]),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.post.userName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.white,
                                 ),
                               ),
-                            )
-                          : Column(
-                              children: _comments.map((comment) => _buildCommentCard(comment)).toList(),
+                              Text(
+                                _formatDate(widget.post.createdAt),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.post.title,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.post.content,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Divider(color: Colors.white24),
+                    const SizedBox(height: 16),
+                    // Comments section
+                    Text(
+                      'Comments (${_comments.length})',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
                             ),
-                ],
+                          )
+                        : _comments.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Text(
+                                'No comments yet. Be the first to comment!',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: _comments
+                                .map((comment) => _buildCommentCard(comment))
+                                .toList(),
+                          ),
+                  ],
+                ),
               ),
             ),
-          ),
-          // Comment input
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  blurRadius: 4,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    decoration: const InputDecoration(
-                      hintText: 'Write a comment...',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            // Comment input
+            GlassContainer(
+              opacity: 0.2,
+              borderRadius: BorderRadius.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _commentController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          hintText: 'Write a comment...',
+                          hintStyle: TextStyle(color: Colors.white60),
+                          border: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white54),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white54),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        maxLines: null,
+                      ),
                     ),
-                    maxLines: null,
-                  ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: _addComment,
+                      color: Colors.white,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _addComment,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildCommentCard(CommunityCommentModel comment) {
-    return Card(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
+      opacity: 0.1,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -642,11 +732,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           children: [
             CircleAvatar(
               radius: 16,
+              backgroundColor: Colors.white24,
               backgroundImage: comment.userProfileImageUrl != null
                   ? NetworkImage(comment.userProfileImageUrl!)
                   : null,
               child: comment.userProfileImageUrl == null
-                  ? Text(comment.userName[0].toUpperCase(), style: const TextStyle(fontSize: 12))
+                  ? Text(
+                      comment.userName[0].toUpperCase(),
+                      style: const TextStyle(fontSize: 12, color: Colors.white),
+                    )
                   : null,
             ),
             const SizedBox(width: 12),
@@ -659,20 +753,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     comment.content,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+                    style: const TextStyle(fontSize: 14, color: Colors.white70),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     _formatDate(comment.createdAt),
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
                 ],
               ),

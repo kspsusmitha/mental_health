@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/realtime_database_service.dart';
 import '../../services/auth_service.dart';
-import '../../models/user_model.dart';
+
 import '../../models/wellness_resource_model.dart';
 import 'screens/users_management_screen.dart';
 import 'screens/therapists_management_screen.dart';
 import 'screens/content_approval_screen.dart';
 import 'screens/admin_profile_screen.dart';
+import 'screens/admin_appointments_screen.dart';
 import 'package:uuid/uuid.dart';
+import '../../widgets/animated_background.dart';
+import '../../widgets/glass_container.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -76,206 +79,127 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  int _totalUsers = 0;
-  int _totalTherapists = 0;
-  int _pendingContent = 0;
-  int _totalResources = 0;
-
   @override
   void initState() {
     super.initState();
-    _loadStats();
-  }
-
-  Future<void> _loadStats() async {
-    try {
-      final dbService = Provider.of<RealtimeDatabaseService>(
-        context,
-        listen: false,
-      );
-
-      final usersData = await dbService.readList('users');
-      final therapistsData = await dbService.readList('therapists');
-      final resourcesData = await dbService.readList('wellness_resources');
-
-      setState(() {
-        _totalUsers = usersData
-            .where((u) => UserModel.fromMap(u).userType == UserType.user)
-            .length;
-        _totalTherapists = therapistsData.length;
-        _pendingContent = resourcesData
-            .where((r) => !WellnessResourceModel.fromMap(r).isApproved)
-            .length;
-        _totalResources = resourcesData.length;
-      });
-    } catch (e) {
-      // Handle error
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: const Text(
+          'Admin Dashboard',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         automaticallyImplyLeading: false, // Remove back button
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Stats Cards
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&q=80', // Premium abstract background
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Welcome, Admin',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Quick Actions
+              Text(
+                'Management',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 16),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                children: [
+                  _buildActionCard(
                     context,
                     icon: Icons.people,
-                    title: 'Total Users',
-                    value: _totalUsers.toString(),
-                    color: Colors.blue,
+                    title: 'Manage Users',
+                    color: Colors.blueAccent,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const UsersManagementScreen(),
+                        ),
+                      );
+                    },
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
+                  _buildActionCard(
                     context,
                     icon: Icons.medical_services,
-                    title: 'Therapists',
-                    value: _totalTherapists.toString(),
-                    color: Colors.green,
+                    title: 'Manage Therapists',
+                    color: Colors.greenAccent,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TherapistsManagementScreen(),
+                        ),
+                      );
+                    },
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
+                  _buildActionCard(
                     context,
                     icon: Icons.approval,
-                    title: 'Pending',
-                    value: _pendingContent.toString(),
-                    color: Colors.orange,
+                    title: 'Approve Content',
+                    color: Colors.orangeAccent,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ContentApprovalScreen(),
+                        ),
+                      );
+                    },
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
+                  _buildActionCard(
                     context,
-                    icon: Icons.spa,
-                    title: 'Resources',
-                    value: _totalResources.toString(),
-                    color: Colors.purple,
+                    icon: Icons.add_circle,
+                    title: 'Add Resource',
+                    color: Colors.purpleAccent,
+                    onTap: () {
+                      _showAddResourceDialog(context);
+                    },
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Quick Actions
-            Text(
-              'Quick Actions',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              children: [
-                _buildActionCard(
-                  context,
-                  icon: Icons.people,
-                  title: 'Manage Users',
-                  color: Colors.blue,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const UsersManagementScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildActionCard(
-                  context,
-                  icon: Icons.medical_services,
-                  title: 'Manage Therapists',
-                  color: Colors.green,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const TherapistsManagementScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildActionCard(
-                  context,
-                  icon: Icons.approval,
-                  title: 'Approve Content',
-                  color: Colors.orange,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ContentApprovalScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildActionCard(
-                  context,
-                  icon: Icons.add_circle,
-                  title: 'Add Resource',
-                  color: Colors.purple,
-                  onTap: () {
-                    _showAddResourceDialog(context);
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
+                  _buildActionCard(
+                    context,
+                    icon: Icons.calendar_today,
+                    title: 'All Appointments',
+                    color: Colors.tealAccent,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminAppointmentsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -288,21 +212,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
+    return GlassContainer(
+      opacity: 0.1,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 32, color: color),
-              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 32, color: color),
+              ),
+              const SizedBox(height: 12),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
               ),
             ],
           ),
@@ -416,7 +352,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           content: Text('Resource added successfully'),
                         ),
                       );
-                      _loadStats();
                     }
                   } catch (e) {
                     if (context.mounted) {

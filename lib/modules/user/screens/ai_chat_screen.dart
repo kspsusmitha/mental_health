@@ -5,6 +5,8 @@ import '../../../services/ai_service.dart';
 import '../../../services/realtime_database_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../models/message_model.dart';
+import '../../../widgets/animated_background.dart';
+import '../../../widgets/glass_container.dart';
 
 class AIChatScreen extends StatefulWidget {
   const AIChatScreen({super.key});
@@ -44,23 +46,28 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
   Future<void> _loadChatHistory() async {
     if (_currentUserId == null) return;
-    
+
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final userNodePath = authService.getCurrentUserNodePath();
       if (userNodePath == null) return;
-      
-      final messagesData = await dbService.readList('$userNodePath/$_currentUserId/ai_chats');
-      
+
+      final messagesData = await dbService.readList(
+        '$userNodePath/$_currentUserId/ai_chats',
+      );
+
       setState(() {
         _messages.clear();
         _messages.addAll(
-          messagesData.map((data) => MessageModel.fromMap(data)).toList()
+          messagesData.map((data) => MessageModel.fromMap(data)).toList(),
         );
         _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
       });
-      
+
       if (_messages.isNotEmpty && _scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
@@ -70,7 +77,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || _currentUserId == null) return;
+    if (_messageController.text.trim().isEmpty || _currentUserId == null)
+      return;
 
     final userMessage = MessageModel(
       id: const Uuid().v4(),
@@ -93,10 +101,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
     try {
       // Save user message to database
       final authService = Provider.of<AuthService>(context, listen: false);
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final userNodePath = authService.getCurrentUserNodePath();
       if (userNodePath == null) return;
-      
+
       await dbService.writeData(
         '$userNodePath/$_currentUserId/ai_chats/${userMessage.id}',
         userMessage.toMap(),
@@ -106,16 +117,21 @@ class _AIChatScreenState extends State<AIChatScreen> {
       final chatHistory = _messages
           .where((m) => m.senderId == _currentUserId || m.receiverId == 'ai')
           .take(10)
-          .map((m) => {
-                'user': m.senderId == _currentUserId ? m.content : '',
-                'assistant': m.senderId == 'ai' ? m.content : '',
-              })
+          .map(
+            (m) => {
+              'user': m.senderId == _currentUserId ? m.content : '',
+              'assistant': m.senderId == 'ai' ? m.content : '',
+            },
+          )
           .where((m) => m['user']!.isNotEmpty || m['assistant']!.isNotEmpty)
           .map((m) => Map<String, String>.from(m))
           .toList();
 
       final aiService = Provider.of<AIService>(context, listen: false);
-      final response = await aiService.getChatResponse(messageText, chatHistory);
+      final response = await aiService.getChatResponse(
+        messageText,
+        chatHistory,
+      );
 
       final aiMessage = MessageModel(
         id: const Uuid().v4(),
@@ -143,9 +159,9 @@ class _AIChatScreenState extends State<AIChatScreen> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -165,107 +181,123 @@ class _AIChatScreenState extends State<AIChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Row(
           children: [
-            Icon(Icons.smart_toy, color: Colors.blue),
+            Icon(Icons.smart_toy, color: Colors.white),
             SizedBox(width: 8),
-            Text('AI Support Assistant'),
+            Text('AI Support Assistant', style: TextStyle(color: Colors.white)),
           ],
         ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _messages.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Start a conversation with AI',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1518531933037-8845d583afa2?auto=format&fit=crop&q=80',
+        child: Column(
+          children: [
+            Expanded(
+              child: _messages.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.chat_bubble_outline,
+                            size: 64,
+                            color: Colors.white60,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Start a conversation with AI',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                      itemCount: _messages.length + (_isLoading ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == _messages.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Row(
+                              children: [
+                                CircularProgressIndicator(color: Colors.white),
+                                SizedBox(width: 16),
+                                Text(
+                                  'AI is thinking...',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        final message = _messages[index];
+                        final isUser = message.senderId == _currentUserId;
+                        return _buildMessageBubble(message, isUser);
+                      },
+                    ),
+            ),
+            GlassContainer(
+              opacity: 0.2,
+              borderRadius: BorderRadius.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Type your message...',
+                          hintStyle: const TextStyle(color: Colors.white60),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: const BorderSide(color: Colors.white54),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: const BorderSide(color: Colors.white54),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: const BorderSide(color: Colors.white),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
                           ),
                         ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _messages.length + (_isLoading ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _messages.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Row(
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(width: 16),
-                              Text('AI is thinking...'),
-                            ],
-                          ),
-                        );
-                      }
-                      final message = _messages[index];
-                      final isUser = message.senderId == _currentUserId;
-                      return _buildMessageBubble(message, isUser);
-                    },
-                  ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Type your message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                        maxLines: null,
+                        textCapitalization: TextCapitalization.sentences,
+                        onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
-                    maxLines: null,
-                    textCapitalization: TextCapitalization.sentences,
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _isLoading ? null : _sendMessage,
+                      icon: const Icon(Icons.send),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.blue,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _isLoading ? null : _sendMessage,
-                  icon: const Icon(Icons.send),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -315,4 +347,3 @@ class _AIChatScreenState extends State<AIChatScreen> {
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
-

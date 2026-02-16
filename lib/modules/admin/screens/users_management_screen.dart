@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/realtime_database_service.dart';
 import '../../../models/user_model.dart';
+import '../../../widgets/animated_background.dart';
+import '../../../widgets/glass_container.dart';
 
 class UsersManagementScreen extends StatefulWidget {
   const UsersManagementScreen({super.key});
@@ -23,9 +25,12 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   Future<void> _loadUsers() async {
     setState(() => _isLoading = true);
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final usersData = await dbService.readList('users');
-      
+
       setState(() {
         _users = usersData
             .map((data) => UserModel.fromMap(data))
@@ -60,19 +65,22 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
 
     if (confirmed == true) {
       try {
-        final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+        final dbService = Provider.of<RealtimeDatabaseService>(
+          context,
+          listen: false,
+        );
         await dbService.deleteData('users/$userId');
         _loadUsers();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User deleted')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('User deleted')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting user: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error deleting user: $e')));
         }
       }
     }
@@ -81,33 +89,49 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Users Management'),
+        title: const Text(
+          'Users Management',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _users.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      Text('No users found', style: TextStyle(color: Colors.grey[600])),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadUsers,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _users.length,
-                    itemBuilder: (context, index) => _UserCard(
-                      user: _users[index],
-                      onDelete: () => _deleteUser(_users[index].id),
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1576091160550-2187d80aeff2?auto=format&fit=crop&q=80',
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : _users.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.people_outline, size: 64, color: Colors.white70),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No users found',
+                      style: TextStyle(color: Colors.white70),
                     ),
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadUsers,
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                  itemCount: _users.length,
+                  itemBuilder: (context, index) => _UserCard(
+                    user: _users[index],
+                    onDelete: () => _deleteUser(_users[index].id),
                   ),
                 ),
+              ),
+      ),
     );
   }
 }
@@ -120,23 +144,32 @@ class _UserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 16),
+      opacity: 0.2,
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          backgroundColor: Colors.white24,
           child: user.profileImageUrl != null
               ? ClipOval(child: Image.network(user.profileImageUrl!))
-              : Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
+              : const Icon(Icons.person, color: Colors.white),
         ),
-        title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(user.email),
+        title: Text(
+          user.name,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        subtitle: Text(
+          user.email,
+          style: const TextStyle(color: Colors.white70),
+        ),
         trailing: IconButton(
-          icon: const Icon(Icons.delete, color: Colors.red),
+          icon: Icon(Icons.delete, color: Colors.redAccent.shade100),
           onPressed: onDelete,
         ),
       ),
     );
   }
 }
-

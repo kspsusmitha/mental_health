@@ -1,4 +1,5 @@
 import 'package:firebase_database/firebase_database.dart';
+import '../models/user_model.dart';
 
 class RealtimeDatabaseService {
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
@@ -55,7 +56,9 @@ class RealtimeDatabaseService {
             if (value is Map) {
               final map = Map<String, dynamic>.from(value);
               // Ensure id field is set from the key if not present
-              if (!map.containsKey('id') || map['id'] == null || map['id'] == '') {
+              if (!map.containsKey('id') ||
+                  map['id'] == null ||
+                  map['id'] == '') {
                 map['id'] = entry.key;
               }
               return map;
@@ -94,8 +97,7 @@ class RealtimeDatabaseService {
   // Query with ordering
   Future<List<Map<String, dynamic>>> queryOrdered(
     String path,
-    String orderBy,
-    {
+    String orderBy, {
     int? limitToFirst,
     int? limitToLast,
     dynamic startAt,
@@ -103,7 +105,7 @@ class RealtimeDatabaseService {
   }) async {
     try {
       Query query = _database.child(path).orderByChild(orderBy);
-      
+
       if (startAt != null) query = query.startAt(startAt);
       if (endAt != null) query = query.endAt(endAt);
       if (limitToFirst != null) query = query.limitToFirst(limitToFirst);
@@ -145,5 +147,31 @@ class RealtimeDatabaseService {
       throw Exception('Failed to push data: $e');
     }
   }
-}
 
+  // User specific methods
+  Future<void> createUser(UserModel user) async {
+    await writeData('users/${user.id}', user.toMap());
+  }
+
+  Future<void> createTherapist(
+    UserModel user, {
+    Map<String, List<String>>? availability,
+  }) async {
+    final therapistData = {
+      'id': user.id,
+      'userId': user.id,
+      'name': user.name,
+      'email': user.email,
+      'role': 'therapist',
+      'createdAt': DateTime.now().toIso8601String(),
+      if (availability != null) 'availability': availability,
+    };
+    await writeData('therapists/${user.id}', therapistData);
+    await writeData('users/${user.id}', user.toMap());
+  }
+
+  Future<void> createAdmin(UserModel user) async {
+    await writeData('admins/${user.id}', user.toMap());
+    await writeData('users/${user.id}', user.toMap());
+  }
+}

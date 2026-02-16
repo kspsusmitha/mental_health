@@ -62,7 +62,10 @@ enum AppointmentStatus {
   scheduled,
   completed,
   cancelled,
-  rescheduled;
+  rescheduled,
+  pending,
+  accepted,
+  declined;
 
   static AppointmentStatus fromString(String value) {
     switch (value.toLowerCase()) {
@@ -72,6 +75,12 @@ enum AppointmentStatus {
         return AppointmentStatus.cancelled;
       case 'rescheduled':
         return AppointmentStatus.rescheduled;
+      case 'pending':
+        return AppointmentStatus.pending;
+      case 'accepted':
+        return AppointmentStatus.accepted;
+      case 'declined':
+        return AppointmentStatus.declined;
       default:
         return AppointmentStatus.scheduled;
     }
@@ -86,6 +95,12 @@ enum AppointmentStatus {
         return 'cancelled';
       case AppointmentStatus.rescheduled:
         return 'rescheduled';
+      case AppointmentStatus.pending:
+        return 'pending';
+      case AppointmentStatus.accepted:
+        return 'accepted';
+      case AppointmentStatus.declined:
+        return 'declined';
       default:
         return 'scheduled';
     }
@@ -120,4 +135,3 @@ enum AppointmentType {
     }
   }
 }
-

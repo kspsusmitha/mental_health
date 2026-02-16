@@ -6,10 +6,13 @@ import '../../../services/recommendation_service.dart';
 import '../../../models/wellness_resource_model.dart';
 import '../../../data/meditation_resources.dart';
 import '../../../utils/page_transitions.dart';
+import '../../../widgets/animated_background.dart';
+import '../../../widgets/glass_container.dart';
 import 'mood_tracking_screen.dart';
 import 'journal_screen.dart';
 import 'therapist_matching_screen.dart';
 import 'meditation_player_screen.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 
 class WellnessScreen extends StatefulWidget {
   const WellnessScreen({super.key});
@@ -18,7 +21,8 @@ class WellnessScreen extends StatefulWidget {
   State<WellnessScreen> createState() => _WellnessScreenState();
 }
 
-class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProviderStateMixin {
+class _WellnessScreenState extends State<WellnessScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<WellnessResourceModel> _allResources = [];
   List<Recommendation> _recommendations = [];
@@ -55,29 +59,31 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
 
   Future<void> _loadResources() async {
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
-      
-      // Convert LinkedMap to Map<String, dynamic>
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
+
       dynamic convertValue(dynamic value) {
         if (value is Map) {
           return Map<String, dynamic>.from(
-            value.map((key, val) => MapEntry(
-              key.toString(),
-              convertValue(val),
-            )),
+            value.map(
+              (key, val) => MapEntry(key.toString(), convertValue(val)),
+            ),
           );
         } else if (value is List) {
           return List<dynamic>.from(value.map((item) => convertValue(item)));
         }
         return value;
       }
-      
+
       final resourcesData = await dbService.readList('wellness_resources');
       final List<WellnessResourceModel> resources = [];
-      
+
       for (var data in resourcesData) {
         try {
-          final Map<String, dynamic> resourceMap = convertValue(data) as Map<String, dynamic>;
+          final Map<String, dynamic> resourceMap =
+              convertValue(data) as Map<String, dynamic>;
           final resource = WellnessResourceModel.fromMap(resourceMap);
           if (resource.isApproved) {
             resources.add(resource);
@@ -86,7 +92,7 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
           continue;
         }
       }
-      
+
       setState(() {
         _allResources = resources;
         if (_isLoading) {
@@ -103,7 +109,8 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
       final authService = Provider.of<AuthService>(context, listen: false);
       final userId = authService.currentUser?.id;
       if (userId != null) {
-        final recommendations = await _recommendationService.getPersonalizedRecommendations(userId);
+        final recommendations = await _recommendationService
+            .getPersonalizedRecommendations(userId);
         setState(() => _recommendations = recommendations);
       }
     } catch (e) {
@@ -112,37 +119,53 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
   }
 
   Future<void> _loadDailyTip() async {
-    // Load daily wellness tip from database or use default
     try {
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final tipsData = await dbService.readList('wellness_tips');
       if (tipsData.isNotEmpty) {
         final tipIndex = DateTime.now().day % tipsData.length;
         if (tipIndex < tipsData.length) {
           final tip = tipsData[tipIndex];
-          setState(() => _dailyTip = tip['text'] ?? 'Take a moment to breathe deeply and center yourself.');
+          setState(
+            () => _dailyTip =
+                tip['text'] ??
+                'Take a moment to breathe deeply and center yourself.',
+          );
         }
       } else {
-        setState(() => _dailyTip = 'Take a moment to breathe deeply and center yourself.');
+        setState(
+          () => _dailyTip =
+              'Take a moment to breathe deeply and center yourself.',
+        );
       }
     } catch (e) {
-      setState(() => _dailyTip = 'Take a moment to breathe deeply and center yourself.');
+      setState(
+        () =>
+            _dailyTip = 'Take a moment to breathe deeply and center yourself.',
+      );
     }
   }
 
   Future<void> _loadLastSession() async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final userId = authService.currentUser?.id;
       if (userId == null) return;
 
       final userNodePath = authService.getCurrentUserNodePath();
       if (userNodePath == null) return;
 
-      final username = authService.currentUser?.name.toLowerCase().replaceAll(' ', '_');
-      final lastSessionData = await dbService.readData('$userNodePath/$username/last_session');
-      
+      final lastSessionData = await dbService.readData(
+        '$userNodePath/$userId/last_session',
+      );
+
       if (lastSessionData != null && lastSessionData['resourceId'] != null) {
         final resourceId = lastSessionData['resourceId'].toString();
         final resource = _allResources.firstWhere(
@@ -159,21 +182,27 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
   Future<void> _loadFavorites() async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final userId = authService.currentUser?.id;
       if (userId == null) return;
 
       final userNodePath = authService.getCurrentUserNodePath();
       if (userNodePath == null) return;
 
-      final username = authService.currentUser?.name.toLowerCase().replaceAll(' ', '_');
-      final favoritesData = await dbService.readData('$userNodePath/$username/favorites');
-      
+      final favoritesData = await dbService.readData(
+        '$userNodePath/$userId/favorites',
+      );
+
       if (favoritesData != null && favoritesData['wellness'] != null) {
         final List<dynamic> favoritesList = favoritesData['wellness'] is List
             ? favoritesData['wellness']
             : [];
-        setState(() => _favorites = favoritesList.map((e) => e.toString()).toSet());
+        setState(
+          () => _favorites = favoritesList.map((e) => e.toString()).toSet(),
+        );
       }
     } catch (e) {
       // Handle error silently
@@ -183,20 +212,28 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
   Future<void> _loadSessionCounts() async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final userId = authService.currentUser?.id;
       if (userId == null) return;
 
       final userNodePath = authService.getCurrentUserNodePath();
       if (userNodePath == null) return;
 
-      final username = authService.currentUser?.name.toLowerCase().replaceAll(' ', '_');
-      final sessionsData = await dbService.readData('$userNodePath/$username/session_counts');
-      
+      final sessionsData = await dbService.readData(
+        '$userNodePath/$userId/session_counts',
+      );
+
       if (sessionsData != null) {
-        final Map<String, dynamic> counts = Map<String, dynamic>.from(sessionsData);
+        final Map<String, dynamic> counts = Map<String, dynamic>.from(
+          sessionsData,
+        );
         setState(() {
-          _sessionCounts = counts.map((key, value) => MapEntry(key, value as int));
+          _sessionCounts = counts.map(
+            (key, value) => MapEntry(key, value as int),
+          );
         });
       }
     } catch (e) {
@@ -207,15 +244,16 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
   Future<void> _toggleFavorite(String resourceId) async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final userId = authService.currentUser?.id;
       if (userId == null) return;
 
       final userNodePath = authService.getCurrentUserNodePath();
       if (userNodePath == null) return;
 
-      final username = authService.currentUser?.name.toLowerCase().replaceAll(' ', '_');
-      
       setState(() {
         if (_favorites.contains(resourceId)) {
           _favorites.remove(resourceId);
@@ -224,12 +262,10 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
         }
       });
 
-      await dbService.writeData(
-        '$userNodePath/$username/favorites',
-        {'wellness': _favorites.toList()},
-      );
+      await dbService.writeData('$userNodePath/$userId/favorites', {
+        'wellness': _favorites.toList(),
+      });
     } catch (e) {
-      // Revert on error
       setState(() {
         if (_favorites.contains(resourceId)) {
           _favorites.remove(resourceId);
@@ -243,71 +279,75 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
   Future<void> _trackSession(String resourceId) async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final dbService = Provider.of<RealtimeDatabaseService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
       final userId = authService.currentUser?.id;
       if (userId == null) return;
 
       final userNodePath = authService.getCurrentUserNodePath();
       if (userNodePath == null) return;
 
-      final username = authService.currentUser?.name.toLowerCase().replaceAll(' ', '_');
-      
       setState(() {
         _sessionCounts[resourceId] = (_sessionCounts[resourceId] ?? 0) + 1;
       });
 
       await dbService.writeData(
-        '$userNodePath/$username/session_counts',
+        '$userNodePath/$userId/session_counts',
         _sessionCounts,
       );
 
-      // Update last session
       final resource = _allResources.firstWhere((r) => r.id == resourceId);
-      await dbService.writeData(
-        '$userNodePath/$username/last_session',
-        {
-          'resourceId': resourceId,
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-          'title': resource.title,
-        },
-      );
+      await dbService.writeData('$userNodePath/$userId/last_session', {
+        'resourceId': resourceId,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'title': resource.title,
+      });
       setState(() => _lastSession = resource);
     } catch (e) {
       // Handle error silently
     }
   }
 
-  List<WellnessResourceModel> _getFilteredResources(ResourceType? type, {String? category, int? duration}) {
+  List<WellnessResourceModel> _getFilteredResources(
+    ResourceType? type, {
+    String? category,
+    int? duration,
+  }) {
     var filtered = _allResources;
-    
+
     if (type != null) {
       filtered = filtered.where((r) => r.type == type).toList();
     }
-    
+
     if (category != null) {
-      filtered = filtered.where((r) => r.tags.contains(category.toLowerCase())).toList();
+      filtered = filtered
+          .where((r) => r.tags.contains(category.toLowerCase()))
+          .toList();
     }
-    
+
     if (duration != null) {
       filtered = filtered.where((r) => r.duration == duration).toList();
     }
-    
+
     return filtered;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Wellness'),
-        backgroundColor: Colors.purple[50],
-        foregroundColor: Colors.purple[900],
+        title: const Text('Wellness', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.purple[900],
-          unselectedLabelColor: Colors.purple[400],
-          indicatorColor: Colors.purple[900],
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white60,
+          indicatorColor: Colors.white,
           tabs: const [
             Tab(icon: Icon(Icons.dashboard), text: 'All'),
             Tab(icon: Icon(Icons.self_improvement), text: 'Meditation'),
@@ -315,16 +355,22 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
           ],
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildAllTab(),
-                _buildMeditationTab(),
-                _buildAudioTab(),
-              ],
-            ),
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1544367563-12123d8965cd?q=80&w=2070&auto=format&fit=crop',
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildAllTab(),
+                  _buildMeditationTab(),
+                  _buildAudioTab(),
+                ],
+              ),
+      ),
     );
   }
 
@@ -332,35 +378,24 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
     return RefreshIndicator(
       onRefresh: _initializeData,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 120, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Daily Mood Check-in
             _buildMoodCheckIn(),
             const SizedBox(height: 16),
-            
-            // AI Recommendation Card
             if (_recommendations.isNotEmpty) ...[
               _buildAIRecommendationCard(),
               const SizedBox(height: 16),
             ],
-            
-            // Continue Last Session
             if (_lastSession != null) ...[
               _buildContinueLastSession(),
               const SizedBox(height: 16),
             ],
-            
-            // Daily Wellness Tip
             _buildDailyTip(),
             const SizedBox(height: 16),
-            
-            // Need Help Now Button
             _buildNeedHelpNow(),
             const SizedBox(height: 16),
-            
-            // Quick Access to Resources
             _buildQuickResources(),
           ],
         ),
@@ -377,9 +412,8 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
       {'emoji': '😟', 'label': 'Anxious', 'value': 'anxious'},
     ];
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return GlassContainer(
+      opacity: 0.1,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -387,14 +421,14 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
           children: [
             Row(
               children: [
-                Icon(Icons.mood, color: Colors.purple[700], size: 24),
+                Icon(Icons.mood, color: Colors.white, size: 24),
                 const SizedBox(width: 8),
                 Text(
                   'Daily Mood Check-in',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.purple[900],
+                    color: Colors.white,
                   ),
                 ),
               ],
@@ -402,7 +436,7 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
             const SizedBox(height: 16),
             Text(
               'How are you feeling today?',
-              style: TextStyle(color: Colors.grey[700], fontSize: 14),
+              style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 12),
             Row(
@@ -412,9 +446,7 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                   onTap: () {
                     Navigator.push(
                       context,
-                      createAnimatedRoute(
-                        const MoodTrackingScreen(),
-                      ),
+                      createAnimatedRoute(const MoodTrackingScreen()),
                     );
                   },
                   child: Column(
@@ -422,7 +454,7 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.purple[50],
+                          color: Colors.white10,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -433,10 +465,7 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                       const SizedBox(height: 4),
                       Text(
                         mood['label']!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[700],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.white70),
                       ),
                     ],
                   ),
@@ -451,24 +480,10 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
 
   Widget _buildAIRecommendationCard() {
     final topRecommendation = _recommendations.first;
-    
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.purple[100]!,
-            Colors.purple[50]!,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: Colors.transparent,
-        child: Padding(
+
+    return GlassContainer(
+      opacity: 0.2, // Slightly more opaque for emphasis
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,10 +493,14 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.purple[700],
+                    color: Colors.purple.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -489,7 +508,7 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.purple[900],
+                    color: Colors.white,
                   ),
                 ),
               ],
@@ -500,13 +519,13 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.purple[900],
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               topRecommendation.description,
-              style: TextStyle(color: Colors.grey[700], fontSize: 14),
+              style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 12),
             ElevatedButton(
@@ -516,13 +535,13 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                     context,
                     createAnimatedRoute(const TherapistMatchingScreen()),
                   );
-                } else if (topRecommendation.type == RecommendationType.journaling) {
+                } else if (topRecommendation.type ==
+                    RecommendationType.journaling) {
                   Navigator.push(
                     context,
                     createAnimatedRoute(const JournalScreen()),
                   );
                 } else {
-                  // Switch to appropriate tab
                   if (topRecommendation.type == RecommendationType.meditation) {
                     _tabController.animateTo(1);
                   } else {
@@ -531,25 +550,25 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple[700],
-                foregroundColor: Colors.white,
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.purple,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: Text(topRecommendation.action),
             ),
           ],
-        ),
         ),
       ),
     );
   }
 
   Widget _buildContinueLastSession() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return GlassContainer(
+      opacity: 0.1,
       child: InkWell(
         onTap: () => _playResource(_lastSession!),
-        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -557,10 +576,14 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.purple[100],
+                  color: Colors.purple.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.play_arrow, color: Colors.purple[700], size: 32),
+                child: Icon(
+                  Icons.play_arrow,
+                  color: Colors.purpleAccent,
+                  size: 32,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -569,10 +592,7 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                   children: [
                     Text(
                       'Continue Last Session',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.white70),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -580,13 +600,13 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.purple[900],
+                        color: Colors.white,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
+              Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
             ],
           ),
         ),
@@ -595,9 +615,8 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
   }
 
   Widget _buildDailyTip() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return GlassContainer(
+      opacity: 0.1,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -605,22 +624,27 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
           children: [
             Row(
               children: [
-                Icon(Icons.lightbulb_outline, color: Colors.amber[700], size: 24),
+                Icon(
+                  Icons.lightbulb_outline,
+                  color: Colors.amberAccent,
+                  size: 24,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Daily Wellness Tip',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.purple[900],
+                    color: Colors.white,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Text(
-              _dailyTip ?? 'Take a moment to breathe deeply and center yourself.',
-              style: TextStyle(color: Colors.grey[700], fontSize: 14),
+              _dailyTip ??
+                  'Take a moment to breathe deeply and center yourself.',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
           ],
         ),
@@ -629,12 +653,10 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
   }
 
   Widget _buildNeedHelpNow() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return GlassContainer(
+      opacity: 0.1,
       child: InkWell(
         onTap: () => _showHelpOptions(),
-        borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -642,8 +664,8 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.red[400]!,
-                Colors.red[600]!,
+                Colors.red.withOpacity(0.4),
+                Colors.red.withOpacity(0.6),
               ],
             ),
             borderRadius: BorderRadius.circular(16),
@@ -669,25 +691,126 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
   }
 
   Widget _buildQuickResources() {
-    final quickResources = _allResources.take(3).toList();
+    final quickResources = _allResources.take(5).toList();
     if (quickResources.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Quick Access',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.purple[900],
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Featured Resources',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            TextButton(
+              onPressed: () => _tabController.animateTo(1),
+              child: const Text(
+                'View All',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
-        ...quickResources.map((resource) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildResourceCard(resource, showFavorite: true),
-            )),
+        CarouselSlider(
+          options: CarouselOptions(
+            height: 200,
+            enlargeCenterPage: true,
+            autoPlay: true,
+            aspectRatio: 16 / 9,
+            autoPlayCurve: Curves.fastOutSlowIn,
+            enableInfiniteScroll: true,
+            autoPlayAnimationDuration: const Duration(milliseconds: 800),
+            viewportFraction: 0.8,
+          ),
+          items: quickResources.map((resource) {
+            return Builder(
+              builder: (BuildContext context) {
+                return GestureDetector(
+                  onTap: () => _playResource(resource),
+                  child: Container(
+                    width: MediaQuery.of(context).size.width,
+                    margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      image: DecorationImage(
+                        image: NetworkImage(
+                          resource.thumbnailUrl ??
+                              'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=2062&auto=format&fit=crop',
+                        ),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.7),
+                          ],
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              resource.type == ResourceType.meditation
+                                  ? 'Meditation'
+                                  : 'Audio',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            resource.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '${resource.duration} mins',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ),
       ],
     );
   }
@@ -698,7 +821,6 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
 
     return StatefulBuilder(
       builder: (context, setState) {
-        // Get meditation resources
         final meditations = MeditationResources.getFiltered(
           category: selectedCategory,
           duration: selectedDuration,
@@ -706,76 +828,108 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
 
         return Column(
           children: [
-            // Filters
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.purple[50],
-              child: Column(
-                children: [
-                  // Category Filter
-                  Row(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 120, 16, 8),
+              child: GlassContainer(
+                opacity: 0.1,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                     children: [
-                      Text(
-                        'Category:',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple[900]),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Wrap(
-                          spacing: 8,
-                          children: [
-                            _buildFilterChip('All', selectedCategory == null, () {
-                              setState(() => selectedCategory = null);
-                            }),
-                            ...MeditationResources.categories.map((cat) => _buildFilterChip(
-                                  cat,
-                                  selectedCategory == cat.toLowerCase(),
+                      Row(
+                        children: [
+                          const Text(
+                            'Category:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _buildFilterChip(
+                                  'All',
+                                  selectedCategory == null,
                                   () {
-                                    setState(() => selectedCategory = cat.toLowerCase());
+                                    setState(() => selectedCategory = null);
                                   },
-                                )),
-                          ],
-                        ),
+                                ),
+                                ...MeditationResources.categories.map(
+                                  (cat) => _buildFilterChip(
+                                    cat,
+                                    selectedCategory == cat.toLowerCase(),
+                                    () {
+                                      setState(
+                                        () => selectedCategory = cat
+                                            .toLowerCase(),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Text(
+                            'Duration:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _buildFilterChip(
+                                  'All',
+                                  selectedDuration == null,
+                                  () {
+                                    setState(() => selectedDuration = null);
+                                  },
+                                ),
+                                _buildFilterChip(
+                                  '5 min',
+                                  selectedDuration == 5,
+                                  () {
+                                    setState(() => selectedDuration = 5);
+                                  },
+                                ),
+                                _buildFilterChip(
+                                  '10 min',
+                                  selectedDuration == 10,
+                                  () {
+                                    setState(() => selectedDuration = 10);
+                                  },
+                                ),
+                                _buildFilterChip(
+                                  '20 min',
+                                  selectedDuration == 20,
+                                  () {
+                                    setState(() => selectedDuration = 20);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  // Duration Filter
-                  Row(
-                    children: [
-                      Text(
-                        'Duration:',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple[900]),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Wrap(
-                          spacing: 8,
-                          children: [
-                            _buildFilterChip('All', selectedDuration == null, () {
-                              setState(() => selectedDuration = null);
-                            }),
-                            _buildFilterChip('5 min', selectedDuration == 5, () {
-                              setState(() => selectedDuration = 5);
-                            }),
-                            _buildFilterChip('10 min', selectedDuration == 10, () {
-                              setState(() => selectedDuration = 10);
-                            }),
-                            _buildFilterChip('20 min', selectedDuration == 20, () {
-                              setState(() => selectedDuration = 20);
-                            }),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-            // Meditation List
-            Expanded(
-              child: _buildMeditationList(meditations),
-            ),
+            Expanded(child: _buildMeditationList(meditations)),
           ],
         );
       },
@@ -788,9 +942,16 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.self_improvement_outlined, size: 64, color: Colors.grey[400]),
+            Icon(
+              Icons.self_improvement_outlined,
+              size: 64,
+              color: Colors.white54,
+            ),
             const SizedBox(height: 16),
-            Text('No meditations found', style: TextStyle(color: Colors.grey[600])),
+            Text(
+              'No meditations found',
+              style: TextStyle(color: Colors.white70),
+            ),
           ],
         ),
       );
@@ -801,7 +962,8 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: meditations.length,
-        itemBuilder: (context, index) => _buildMeditationCard(meditations[index]),
+        itemBuilder: (context, index) =>
+            _buildMeditationCard(meditations[index]),
       ),
     );
   }
@@ -810,23 +972,18 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
     final sessionCount = _sessionCounts[meditation.id] ?? 0;
     final isFavorite = _favorites.contains(meditation.id);
 
-    return Card(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      opacity: 0.1,
       child: InkWell(
         onTap: () {
           Navigator.push(
             context,
-            createAnimatedRoute(
-              MeditationPlayerScreen(meditation: meditation),
-            ),
+            createAnimatedRoute(MeditationPlayerScreen(meditation: meditation)),
           ).then((_) {
-            // Track session when returning from player
             _trackSession(meditation.id);
           });
         },
-        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -838,12 +995,12 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.purple[100],
+                      color: Colors.purple.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       Icons.self_improvement,
-                      color: Colors.purple[700],
+                      color: Colors.purpleAccent,
                       size: 32,
                     ),
                   ),
@@ -857,12 +1014,13 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           meditation.description,
-                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -872,7 +1030,7 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                   IconButton(
                     icon: Icon(
                       isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? Colors.red : Colors.grey,
+                      color: isFavorite ? Colors.redAccent : Colors.white70,
                     ),
                     onPressed: () => _toggleFavorite(meditation.id),
                   ),
@@ -882,31 +1040,41 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.purple[100],
+                      color: Colors.purple.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       meditation.category.toUpperCase(),
-                      style: TextStyle(
-                        color: Colors.purple[900],
+                      style: const TextStyle(
+                        color: Colors.purpleAccent,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                  Icon(Icons.access_time, size: 14, color: Colors.white54),
                   const SizedBox(width: 4),
-                  Text('${meditation.duration} min', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                  Text(
+                    '${meditation.duration} min',
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
                   if (sessionCount > 0) ...[
                     const SizedBox(width: 16),
-                    Icon(Icons.check_circle, size: 14, color: Colors.green[600]),
+                    Icon(
+                      Icons.check_circle,
+                      size: 14,
+                      color: Colors.greenAccent,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '$sessionCount sessions',
-                      style: TextStyle(color: Colors.green[600], fontSize: 12),
+                      style: TextStyle(color: Colors.greenAccent, fontSize: 12),
                     ),
                   ],
                 ],
@@ -921,54 +1089,66 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
   Widget _buildAudioTab() {
     final isNight = DateTime.now().hour >= 20 || DateTime.now().hour < 6;
     final audioResources = _getFilteredResources(ResourceType.audio);
-    final sleepAudios = audioResources.where((r) => r.tags.contains('sleep')).toList();
+    final sleepAudios = audioResources
+        .where((r) => r.tags.contains('sleep'))
+        .toList();
 
     return Column(
       children: [
-        // Night Suggestion
         if (isNight && sleepAudios.isNotEmpty) ...[
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.indigo[100]!, Colors.indigo[50]!],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 120, 16, 0),
+            child: GlassContainer(
+              opacity: 0.2,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.nightlight_round,
+                      color: Colors.indigoAccent,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sleep Audio Suggested',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            sleepAudios.first.title,
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.play_arrow, color: Colors.white),
+                      onPressed: () => _playResource(sleepAudios.first),
+                    ),
+                  ],
+                ),
               ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.nightlight_round, color: Colors.indigo[700], size: 32),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sleep Audio Suggested',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.indigo[900],
-                        ),
-                      ),
-                      Text(
-                        sleepAudios.first.title,
-                        style: TextStyle(color: Colors.indigo[700], fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.play_arrow, color: Colors.indigo[700]),
-                  onPressed: () => _playResource(sleepAudios.first),
-                ),
-              ],
             ),
           ),
         ],
         // Audio List
         Expanded(
-          child: _buildResourcesList(audioResources, showAutoStop: true),
+          child: Padding(
+            padding: isNight && sleepAudios.isNotEmpty
+                ? EdgeInsets.zero
+                : const EdgeInsets.only(top: 120),
+            child: _buildResourcesList(audioResources, showAutoStop: true),
+          ),
         ),
       ],
     );
@@ -979,24 +1159,36 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
       label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
-      selectedColor: Colors.purple[200],
-      checkmarkColor: Colors.purple[900],
+      selectedColor: Colors.white.withOpacity(0.3),
+      checkmarkColor: Colors.white,
+      backgroundColor: Colors.white10,
       labelStyle: TextStyle(
-        color: selected ? Colors.purple[900] : Colors.grey[700],
+        color: selected ? Colors.white : Colors.white70,
         fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: selected ? Colors.white : Colors.white24),
       ),
     );
   }
 
-  Widget _buildResourcesList(List<WellnessResourceModel> resources, {bool showCategory = false, bool showAutoStop = false}) {
+  Widget _buildResourcesList(
+    List<WellnessResourceModel> resources, {
+    bool showCategory = false,
+    bool showAutoStop = false,
+  }) {
     if (resources.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.spa_outlined, size: 64, color: Colors.grey[400]),
+            Icon(Icons.spa_outlined, size: 64, color: Colors.white54),
             const SizedBox(height: 16),
-            Text('No resources available', style: TextStyle(color: Colors.grey[600])),
+            Text(
+              'No resources available',
+              style: TextStyle(color: Colors.white70),
+            ),
           ],
         ),
       );
@@ -1026,13 +1218,11 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
     final isFavorite = _favorites.contains(resource.id);
     final sessionCount = _sessionCounts[resource.id] ?? 0;
 
-    return Card(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      opacity: 0.1,
       child: InkWell(
         onTap: () => _playResource(resource),
-        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1044,14 +1234,14 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.purple[100],
+                      color: Colors.purple.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       resource.type == ResourceType.meditation
                           ? Icons.self_improvement
                           : Icons.audiotrack,
-                      color: Colors.purple[700],
+                      color: Colors.purpleAccent,
                       size: 32,
                     ),
                   ),
@@ -1065,12 +1255,13 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           resource.description,
-                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1081,7 +1272,7 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                     IconButton(
                       icon: Icon(
                         isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: isFavorite ? Colors.red : Colors.grey,
+                        color: isFavorite ? Colors.redAccent : Colors.white70,
                       ),
                       onPressed: () => _toggleFavorite(resource.id),
                     ),
@@ -1091,22 +1282,28 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
               Row(
                 children: [
                   if (resource.duration > 0) ...[
-                    Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                    Icon(Icons.access_time, size: 14, color: Colors.white54),
                     const SizedBox(width: 4),
-                    Text('${resource.duration} min', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    Text(
+                      '${resource.duration} min',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
                     const SizedBox(width: 16),
                   ],
                   if (showCategory && resource.tags.isNotEmpty) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.purple[100],
+                        color: Colors.purple.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         resource.tags.first.toUpperCase(),
-                        style: TextStyle(
-                          color: Colors.purple[900],
+                        style: const TextStyle(
+                          color: Colors.purpleAccent,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1115,11 +1312,15 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                     const SizedBox(width: 16),
                   ],
                   if (sessionCount > 0) ...[
-                    Icon(Icons.check_circle, size: 14, color: Colors.green[600]),
+                    Icon(
+                      Icons.check_circle,
+                      size: 14,
+                      color: Colors.greenAccent,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '$sessionCount sessions',
-                      style: TextStyle(color: Colors.green[600], fontSize: 12),
+                      style: TextStyle(color: Colors.greenAccent, fontSize: 12),
                     ),
                   ],
                 ],
@@ -1129,11 +1330,15 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(
                     children: [
-                      Icon(Icons.timer_outlined, size: 14, color: Colors.grey[600]),
+                      Icon(
+                        Icons.timer_outlined,
+                        size: 14,
+                        color: Colors.white54,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Auto-stop available',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
                       ),
                     ],
                   ),
@@ -1150,72 +1355,89 @@ class _WellnessScreenState extends State<WellnessScreen> with SingleTickerProvid
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Playing: ${resource.title}'),
-        action: SnackBarAction(
-          label: 'Stop',
-          onPressed: () {},
-        ),
+        action: SnackBarAction(label: 'Stop', onPressed: () {}),
       ),
     );
   }
 
-
   void _showHelpOptions() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Need Help Now?',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.purple[900],
-              ),
-            ),
-            const SizedBox(height: 24),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue[100],
-                  borderRadius: BorderRadius.circular(8),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => GlassContainer(
+        opacity: 0.9,
+        // Using high opacity for readability in modal
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Need Help Now?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
-                child: Icon(Icons.air, color: Colors.blue[700]),
               ),
-              title: const Text('Breathing Exercise'),
-              subtitle: const Text('Quick 5-minute breathing exercise'),
-              onTap: () {
-                Navigator.pop(context);
-                // Navigate to breathing exercise
-              },
-            ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.purple[100],
-                  borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 24),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.air, color: Colors.blueAccent),
                 ),
-                child: Icon(Icons.people, color: Colors.purple[700]),
+                title: const Text(
+                  'Breathing Exercise',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Quick 5-minute breathing exercise',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Navigate to breathing exercise
+                },
               ),
-              title: const Text('Find a Therapist'),
-              subtitle: const Text('Connect with a professional'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  createAnimatedRoute(const TherapistMatchingScreen()),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.people, color: Colors.purpleAccent),
+                ),
+                title: const Text(
+                  'Find a Therapist',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Connect with a professional',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    createAnimatedRoute(const TherapistMatchingScreen()),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );

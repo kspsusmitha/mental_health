@@ -7,6 +7,10 @@ import '../../../models/appointment_model.dart';
 import '../../../models/therapist_model.dart';
 import '../../../models/review_model.dart';
 import 'package:uuid/uuid.dart';
+import '../../../services/notification_service.dart';
+import '../../../models/notification_model.dart';
+import '../../../widgets/animated_background.dart';
+import '../../../widgets/glass_container.dart';
 
 class UserAppointmentsScreen extends StatefulWidget {
   const UserAppointmentsScreen({super.key});
@@ -109,6 +113,57 @@ class _UserAppointmentsScreenState extends State<UserAppointmentsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error cancelling appointment: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _markAppointmentCompleted(AppointmentModel appointment) async {
+    try {
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userNodePath = authService.getCurrentUserNodePath();
+
+      if (userNodePath == null) return;
+
+      // Update in user's node
+      await dbService.updateData(
+        '$userNodePath/$_userId/appointments/${appointment.id}',
+        {'status': AppointmentStatus.completed.toString()},
+      );
+
+      // Update in therapist's node
+      await dbService.updateData(
+        'therapists/${appointment.therapistId}/appointments/${appointment.id}',
+        {'status': AppointmentStatus.completed.toString()},
+      );
+
+      // Send notification to therapist
+      final notificationService = NotificationService(dbService);
+      await notificationService.sendNotification(
+        userId: appointment.therapistId,
+        title: 'Appointment Completed',
+        body:
+            'User ${authService.currentUser?.name ?? "A user"} have marked your appointment as completed.',
+        type: NotificationType.success,
+      );
+
+      _loadAppointments();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment marked as completed')),
+        );
+        // Prompt for review
+        _showReviewDialog(appointment);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating appointment: $e')),
         );
       }
     }
@@ -221,6 +276,16 @@ class _UserAppointmentsScreenState extends State<UserAppointmentsScreen> {
         });
       }
 
+      // Send notification to therapist
+      final notificationService = NotificationService(dbService);
+      await notificationService.sendNotification(
+        userId: appointment.therapistId,
+        title: 'New Review Received',
+        body:
+            'You have received a new ${rating.toStringAsFixed(1)}-star review.',
+        type: NotificationType.info,
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Review submitted successfully!')),
@@ -238,48 +303,72 @@ class _UserAppointmentsScreenState extends State<UserAppointmentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My Appointments')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _appointments.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.calendar_today_outlined,
-                    size: 64,
-                    color: Colors.grey[400],
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text(
+          'My Appointments',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1518531933037-8845d583afa2?auto=format&fit=crop&q=80',
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : _appointments.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 64,
+                      color: Colors.white60,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No appointments yet',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Navigate to find therapist tab (index 3)
+                        // This requires access to the parent navigation controller or passing a callback
+                        // For now, just show a message or pop if pushed
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white24,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                      ),
+                      child: const Text('Find a Therapist'),
+                    ),
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadAppointments,
+                color: Colors.white,
+                backgroundColor: Colors.white24,
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                  itemCount: _appointments.length,
+                  itemBuilder: (context, index) => _UserAppointmentCard(
+                    appointment: _appointments[index],
+                    onCancel: () => _cancelAppointment(_appointments[index]),
+                    onReview: () => _showReviewDialog(_appointments[index]),
+                    onComplete: () =>
+                        _markAppointmentCompleted(_appointments[index]),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No appointments yet',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Navigate to find therapist tab (index 3)
-                      // This requires access to the parent navigation controller or passing a callback
-                      // For now, just show a message or pop if pushed
-                    },
-                    child: const Text('Find a Therapist'),
-                  ),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadAppointments,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _appointments.length,
-                itemBuilder: (context, index) => _UserAppointmentCard(
-                  appointment: _appointments[index],
-                  onCancel: () => _cancelAppointment(_appointments[index]),
-                  onReview: () => _showReviewDialog(_appointments[index]),
                 ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -288,11 +377,13 @@ class _UserAppointmentCard extends StatelessWidget {
   final AppointmentModel appointment;
   final VoidCallback onCancel;
   final VoidCallback onReview;
+  final VoidCallback onComplete;
 
   const _UserAppointmentCard({
     required this.appointment,
     required this.onCancel,
     required this.onReview,
+    required this.onComplete,
   });
 
   Future<TherapistModel?> _getTherapistDetails(
@@ -318,10 +409,13 @@ class _UserAppointmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
     final statusColors = {
-      AppointmentStatus.scheduled: Colors.blue,
-      AppointmentStatus.completed: Colors.green,
-      AppointmentStatus.cancelled: Colors.red,
-      AppointmentStatus.rescheduled: Colors.orange,
+      AppointmentStatus.scheduled: Colors.lightBlueAccent,
+      AppointmentStatus.completed: Colors.lightGreenAccent,
+      AppointmentStatus.cancelled: Colors.redAccent,
+      AppointmentStatus.rescheduled: Colors.orangeAccent,
+      AppointmentStatus.pending: Colors.purpleAccent,
+      AppointmentStatus.accepted: Colors.tealAccent,
+      AppointmentStatus.declined: Colors.grey,
     };
 
     return FutureBuilder<TherapistModel?>(
@@ -330,8 +424,9 @@ class _UserAppointmentCard extends StatelessWidget {
         final therapistName = snapshot.data?.name ?? 'Therapist';
         final therapistImage = snapshot.data?.profileImageUrl;
 
-        return Card(
+        return GlassContainer(
           margin: const EdgeInsets.only(bottom: 16),
+          opacity: 0.2,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -345,6 +440,7 @@ class _UserAppointmentCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                     Container(
@@ -353,15 +449,30 @@ class _UserAppointmentCard extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: statusColors[appointment.status]?.withOpacity(
-                          0.1,
-                        ),
+                        color:
+                            statusColors[appointment.status]?.withOpacity(
+                              0.2,
+                            ) ??
+                            Colors.grey.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color:
+                              statusColors[appointment.status]?.withOpacity(
+                                0.5,
+                              ) ??
+                              Colors.grey.withOpacity(0.5),
+                        ),
                       ),
                       child: Text(
-                        appointment.status.toString().toUpperCase(),
+                        appointment.status
+                            .toString()
+                            .toUpperCase()
+                            .split('.')
+                            .last,
                         style: TextStyle(
-                          color: statusColors[appointment.status],
+                          color:
+                              statusColors[appointment.status] ??
+                              Colors.white70,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -373,15 +484,10 @@ class _UserAppointmentCard extends StatelessWidget {
                 Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.1),
+                      backgroundColor: Colors.white24,
                       child: therapistImage != null
                           ? ClipOval(child: Image.network(therapistImage))
-                          : Icon(
-                              Icons.person,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                          : const Icon(Icons.person, color: Colors.white),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -392,12 +498,13 @@ class _UserAppointmentCard extends StatelessWidget {
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
+                            color: Colors.white,
                           ),
                         ),
                         Text(
                           'Video Consultation',
-                          style: TextStyle(
-                            color: Colors.grey[600],
+                          style: const TextStyle(
+                            color: Colors.white70,
                             fontSize: 14,
                           ),
                         ),
@@ -405,18 +512,48 @@ class _UserAppointmentCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (appointment.status == AppointmentStatus.scheduled) ...[
+                if (appointment.status == AppointmentStatus.scheduled ||
+                    appointment.status == AppointmentStatus.pending) ...[
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: onCancel,
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                        foregroundColor: Colors.redAccent.shade100,
+                        side: BorderSide(color: Colors.redAccent.shade100),
                       ),
                       child: const Text('Cancel Appointment'),
                     ),
+                  ),
+                ],
+                if (appointment.status == AppointmentStatus.accepted) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: onComplete,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.withOpacity(0.8),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                          ),
+                          child: const Text('Mark Completed'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: onCancel,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.redAccent.shade100,
+                            side: BorderSide(color: Colors.redAccent.shade100),
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
                 if (appointment.status == AppointmentStatus.completed) ...[
@@ -428,8 +565,8 @@ class _UserAppointmentCard extends StatelessWidget {
                       icon: const Icon(Icons.star_outline),
                       label: const Text('Leave a Review'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber.withOpacity(0.1),
-                        foregroundColor: Colors.amber[800],
+                        backgroundColor: Colors.amber.withOpacity(0.2),
+                        foregroundColor: Colors.amberAccent,
                         elevation: 0,
                       ),
                     ),

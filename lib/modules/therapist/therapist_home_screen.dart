@@ -6,6 +6,9 @@ import '../../models/appointment_model.dart';
 import 'screens/appointments_screen.dart';
 import 'screens/clients_screen.dart';
 import 'screens/therapist_profile_screen.dart';
+import '../../screens/auth/module_selection_screen.dart';
+import '../../widgets/animated_background.dart';
+import '../../widgets/glass_container.dart';
 
 class TherapistHomeScreen extends StatefulWidget {
   const TherapistHomeScreen({super.key});
@@ -30,42 +33,141 @@ class _TherapistHomeScreenState extends State<TherapistHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: _currentIndex == 0,
-      onPopInvoked: (didPop) {
-        if (didPop) return;
-        setState(() {
-          _currentIndex = 0;
-        });
-      },
-      child: Scaffold(
-        body: IndexedStack(index: _currentIndex, children: _screens),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) {
+    final authService = Provider.of<AuthService>(context);
+    final currentUser = authService.currentUser;
+    // Check if user is a therapist and verification status
+    // Note: We need to ensure we have the latest therapist data, so we might need to fetch it
+    // But for now, let's rely on the authService's user model which should be updated on login
+    // If we need real-time updates of verification status without relogin, we would need a stream here.
+
+    // Check if the current user object has the isVerified property (it should if it's a TherapistModel or if we cast it)
+    // However, AuthService returns UserModel which doesn't have isVerified.
+    // We need to fetch the therapist data to check isVerified status.
+
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      ).readData('therapists/${currentUser?.id}'),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        bool isVerified = false;
+        if (snapshot.hasData && snapshot.data != null) {
+          isVerified = snapshot.data!['isVerified'] ?? false;
+        }
+
+        if (!isVerified) {
+          return Scaffold(
+            body: AnimatedBackground(
+              imageUrl:
+                  'https://images.unsplash.com/photo-1579684385136-1f91b402685d?auto=format&fit=crop&q=80',
+              child: Center(
+                child: GlassContainer(
+                  margin: const EdgeInsets.all(32),
+                  padding: const EdgeInsets.all(32),
+                  opacity: 0.2,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.hourglass_empty_rounded,
+                        size: 80,
+                        color: Colors.orangeAccent,
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Verification Pending',
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Your profile is currently under review by our administrators. '
+                        'Please check back later or contact support if this persists.',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 48),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await authService.signOut();
+                          if (context.mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const ModuleSelectionScreen(),
+                              ),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.logout, color: Colors.white),
+                        label: const Text(
+                          'Sign Out',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return PopScope(
+          canPop: _currentIndex == 0,
+          onPopInvoked: (didPop) {
+            if (didPop) return;
             setState(() {
-              _currentIndex = index;
+              _currentIndex = 0;
             });
           },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(Icons.dashboard),
-              label: 'Dashboard',
+          child: Scaffold(
+            body: IndexedStack(index: _currentIndex, children: _screens),
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: _currentIndex,
+              backgroundColor: Colors.white,
+              elevation: 0,
+              onDestinationSelected: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.dashboard_outlined),
+                  selectedIcon: Icon(Icons.dashboard),
+                  label: 'Dashboard',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.calendar_today_outlined),
+                  selectedIcon: Icon(Icons.calendar_today),
+                  label: 'Appointments',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person),
+                  label: 'Profile',
+                ),
+              ],
             ),
-            NavigationDestination(
-              icon: Icon(Icons.calendar_today_outlined),
-              selectedIcon: Icon(Icons.calendar_today),
-              label: 'Appointments',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Profile',
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -80,9 +182,9 @@ class TherapistDashboardScreen extends StatefulWidget {
 
 class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
   List<AppointmentModel> _upcomingAppointments = [];
+  List<AppointmentModel> _pendingAppointments = [];
   int _totalClients = 0;
   int _completedSessions = 0;
-  double _rating = 0.0;
   bool _isLoading = true;
 
   @override
@@ -110,11 +212,22 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
           .toList();
 
       final upcomingAppointments = allAppointments
-          .where((a) => a.status == AppointmentStatus.scheduled)
+          .where(
+            (a) =>
+                a.status == AppointmentStatus.scheduled ||
+                a.status == AppointmentStatus.accepted,
+          )
           .where((a) => a.scheduledTime.isAfter(DateTime.now()))
           .toList();
 
       upcomingAppointments.sort(
+        (a, b) => a.scheduledTime.compareTo(b.scheduledTime),
+      );
+
+      final pendingAppointments = allAppointments
+          .where((a) => a.status == AppointmentStatus.pending)
+          .toList();
+      pendingAppointments.sort(
         (a, b) => a.scheduledTime.compareTo(b.scheduledTime),
       );
 
@@ -136,130 +249,249 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
         }
       }
 
-      setState(() {
-        _upcomingAppointments = appointmentsWithUsers;
-        _totalClients = clientIds.length;
-        _completedSessions = completedAppointments.length;
-        _rating = 4.8; // Default rating, can be calculated from feedback later
-        _isLoading = false;
-      });
+      // Load user data for pending appointments
+      final pendingWithUsers = <AppointmentModel>[];
+      for (final appointment in pendingAppointments) {
+        final userData = await dbService.readData(
+          'users/${appointment.userId}',
+        );
+        if (userData != null) {
+          pendingWithUsers.add(appointment);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _upcomingAppointments = appointmentsWithUsers;
+          _pendingAppointments = pendingWithUsers;
+          _totalClients = clientIds.length;
+          _completedSessions = completedAppointments.length;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Therapist Dashboard'),
-        automaticallyImplyLeading: false, // Remove back button
+        title: const Text(
+          'Therapist Dashboard',
+          style: TextStyle(color: Colors.white),
+        ),
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadDashboardData,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Stats Cards
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            icon: Icons.calendar_today,
-                            title: 'Upcoming',
-                            value: _upcomingAppointments.length.toString(),
-                            color: Colors.blue,
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1579684385136-1f91b402685d?auto=format&fit=crop&q=80',
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadDashboardData,
+                color: Colors.white,
+                backgroundColor: Colors.white24,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Stats Cards
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              icon: Icons.calendar_today,
+                              title: 'Upcoming',
+                              value: _upcomingAppointments.length.toString(),
+                              color: Colors.lightBlueAccent,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            icon: Icons.people,
-                            title: 'Clients',
-                            value: _totalClients.toString(),
-                            color: Colors.green,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              icon: Icons.pending_actions,
+                              title: 'Pending',
+                              value: _pendingAppointments.length.toString(),
+                              color: Colors.orangeAccent,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            icon: Icons.check_circle,
-                            title: 'Completed',
-                            value: _completedSessions.toString(),
-                            color: Colors.purple,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            icon: Icons.star,
-                            title: 'Rating',
-                            value: _rating.toStringAsFixed(1),
-                            color: Colors.orange,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Quick Actions
-                    Text(
-                      'Quick Actions',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            context,
-                            icon: Icons.people,
-                            title: 'Manage Clients',
-                            value: 'View',
-                            color: Colors.teal,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const ClientsScreen(),
-                                ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              icon: Icons.check_circle,
+                              title: 'Completed',
+                              value: _completedSessions.toString(),
+                              color: Colors.purpleAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              icon: Icons.people,
+                              title: 'Clients',
+                              value: _totalClients.toString(),
+                              color: Colors.greenAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Pending Requests Section
+                      if (_pendingAppointments.isNotEmpty) ...[
+                        Text(
+                          'Pending Requests',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                        ),
+                        const SizedBox(height: 16),
+                        GlassContainer(
+                          opacity: 0.2,
+                          child: Column(
+                            children: _pendingAppointments.map((appointment) {
+                              return FutureBuilder<Map<String, dynamic>?>(
+                                future: _getUserData(appointment.userId),
+                                builder: (context, snapshot) {
+                                  final userName =
+                                      snapshot.data?['name'] ?? 'Unknown User';
+                                  final dateFormat = _getDateFormat(
+                                    appointment.scheduledTime,
+                                  );
+
+                                  return Column(
+                                    children: [
+                                      ListTile(
+                                        leading: CircleAvatar(
+                                          backgroundColor: Colors.white24,
+                                          child: const Icon(
+                                            Icons.person,
+                                            color: Colors.orangeAccent,
+                                          ),
+                                        ),
+                                        title: Text(
+                                          userName,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          '${dateFormat['label']} at ${dateFormat['time']}',
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                        trailing: ElevatedButton(
+                                          onPressed: () {
+                                            final parentState = context
+                                                .findAncestorStateOfType<
+                                                  _TherapistHomeScreenState
+                                                >();
+                                            if (parentState != null) {
+                                              parentState.setState(() {
+                                                parentState._currentIndex =
+                                                    1; // Switch to Appointments tab
+                                              });
+                                            }
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.orangeAccent
+                                                .withOpacity(0.8),
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                            ),
+                                            elevation: 0,
+                                          ),
+                                          child: const Text('Review'),
+                                        ),
+                                      ),
+                                      if (appointment !=
+                                          _pendingAppointments.last)
+                                        Divider(
+                                          height: 1,
+                                          color: Colors.white.withOpacity(0.1),
+                                        ),
+                                    ],
+                                  );
+                                },
                               );
-                            },
+                            }).toList(),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: SizedBox(),
-                        ), // Placeholder for balance
+                        const SizedBox(height: 24),
                       ],
-                    ),
-                    const SizedBox(height: 24),
 
-                    // Upcoming Appointments
-                    Text(
-                      'Upcoming Appointments',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                      // Quick Actions
+                      Text(
+                        'Quick Actions',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    _upcomingAppointments.isEmpty
-                        ? Card(
-                            child: Padding(
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              icon: Icons.people,
+                              title: 'Manage Clients',
+                              value: 'View',
+                              color: Colors.tealAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ClientsScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: SizedBox(),
+                          ), // Placeholder for balance
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Upcoming Appointments
+                      Text(
+                        'Upcoming Appointments',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _upcomingAppointments.isEmpty
+                          ? GlassContainer(
+                              opacity: 0.1,
                               padding: const EdgeInsets.all(32),
                               child: Center(
                                 child: Column(
@@ -267,79 +499,99 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
                                     Icon(
                                       Icons.calendar_today_outlined,
                                       size: 48,
-                                      color: Colors.grey[400],
+                                      color: Colors.white60,
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
                                       'No upcoming appointments',
-                                      style: TextStyle(color: Colors.grey[600]),
+                                      style: TextStyle(color: Colors.white70),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                          )
-                        : Card(
-                            child: Column(
-                              children: _upcomingAppointments.map((
-                                appointment,
-                              ) {
-                                return FutureBuilder<Map<String, dynamic>?>(
-                                  future: _getUserData(appointment.userId),
-                                  builder: (context, snapshot) {
-                                    final userName =
-                                        snapshot.data?['name'] ??
-                                        'Unknown User';
-                                    final dateFormat = _getDateFormat(
-                                      appointment.scheduledTime,
-                                    );
+                            )
+                          : GlassContainer(
+                              opacity: 0.2,
+                              child: Column(
+                                children: _upcomingAppointments.map((
+                                  appointment,
+                                ) {
+                                  return FutureBuilder<Map<String, dynamic>?>(
+                                    future: _getUserData(appointment.userId),
+                                    builder: (context, snapshot) {
+                                      final userName =
+                                          snapshot.data?['name'] ??
+                                          'Unknown User';
+                                      final dateFormat = _getDateFormat(
+                                        appointment.scheduledTime,
+                                      );
 
-                                    return Column(
-                                      children: [
-                                        ListTile(
-                                          leading: const CircleAvatar(
-                                            child: Icon(Icons.person),
-                                          ),
-                                          title: Text(userName),
-                                          subtitle: Text(
-                                            appointment.type
-                                                .toString()
-                                                .toUpperCase(),
-                                          ),
-                                          trailing: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                dateFormat['label'] ?? '',
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
+                                      return Column(
+                                        children: [
+                                          ListTile(
+                                            leading: const CircleAvatar(
+                                              backgroundColor: Colors.white24,
+                                              child: Icon(
+                                                Icons.person,
+                                                color: Colors.white,
                                               ),
-                                              Text(
-                                                dateFormat['time'] ?? '',
-                                                style: TextStyle(
-                                                  color: Colors.grey[600],
-                                                  fontSize: 12,
-                                                ),
+                                            ),
+                                            title: Text(
+                                              userName,
+                                              style: const TextStyle(
+                                                color: Colors.white,
                                               ),
-                                            ],
+                                            ),
+                                            subtitle: Text(
+                                              appointment.type
+                                                  .toString()
+                                                  .toUpperCase()
+                                                  .split('.')
+                                                  .last,
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                              ),
+                                            ),
+                                            trailing: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  dateFormat['label'] ?? '',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  dateFormat['time'] ?? '',
+                                                  style: TextStyle(
+                                                    color: Colors.white60,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        if (appointment !=
-                                            _upcomingAppointments.last)
-                                          const Divider(),
-                                      ],
-                                    );
-                                  },
-                                );
-                              }).toList(),
+                                          if (appointment !=
+                                              _upcomingAppointments.last)
+                                            Divider(
+                                              color: Colors.white.withOpacity(
+                                                0.1,
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                }).toList(),
+                              ),
                             ),
-                          ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 
@@ -389,7 +641,8 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
     required Color color,
     VoidCallback? onTap,
   }) {
-    return Card(
+    return GlassContainer(
+      opacity: 0.2,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -403,13 +656,13 @@ class _TherapistDashboardScreenState extends State<TherapistDashboardScreen> {
                 value,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: color,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 title,
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
           ),

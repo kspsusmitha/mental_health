@@ -14,6 +14,10 @@ import '../user/screens/profile_screen.dart';
 import '../user/screens/community_screen.dart';
 import '../user/screens/user_appointments_screen.dart';
 import '../../screens/auth/module_selection_screen.dart';
+import '../user/screens/user_notifications_screen.dart';
+import '../../widgets/animated_background.dart';
+import '../../widgets/glass_container.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 
 class UserHomeScreen extends StatefulWidget {
   const UserHomeScreen({super.key});
@@ -169,10 +173,23 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('MindCare'),
+        title: const Text('MindCare', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         automaticallyImplyLeading: false, // Ensure no back arrow on root
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                createAnimatedRoute(const UserNotificationsScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _signOut(context),
@@ -188,195 +205,215 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadMoodData,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Welcome Card
-                    _buildWelcomeCard(context),
-                    const SizedBox(height: 24),
+      body: AnimatedBackground(
+        imageUrl:
+            'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=2000&auto=format&fit=crop',
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadMoodData,
+                color: Colors.white,
+                backgroundColor: Colors.white24,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Welcome Card
+                      _buildWelcomeCard(context),
+                      const SizedBox(height: 24),
 
-                    // Quick Actions
-                    Text(
-                      'Quick Actions',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                      // Quick Actions
+                      Text(
+                        'Quick Actions',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildActionCard(
-                            context,
-                            icon: Icons.chat_bubble,
-                            title: 'AI Chat',
-                            color: Colors.blue,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                createAnimatedRoute(const AIChatScreen()),
-                              );
-                            },
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionCard(
+                              context,
+                              icon: Icons.chat_bubble,
+                              title: 'AI Chat',
+                              color: Colors.lightBlueAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  createAnimatedRoute(const AIChatScreen()),
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildActionCard(
-                            context,
-                            icon: Icons.mood,
-                            title: 'Mood Check',
-                            color: Colors.purple,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                createAnimatedRoute(const MoodTrackingScreen()),
-                              );
-                            },
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildActionCard(
+                              context,
+                              icon: Icons.mood,
+                              title: 'Mood Check',
+                              color: Colors.purpleAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  createAnimatedRoute(
+                                    const MoodTrackingScreen(),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildActionCard(
-                            context,
-                            icon: Icons.book,
-                            title: 'Journal',
-                            color: Colors.orange,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                createAnimatedRoute(const JournalScreen()),
-                              );
-                            },
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionCard(
+                              context,
+                              icon: Icons.book,
+                              title: 'Journal',
+                              color: Colors.orangeAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  createAnimatedRoute(const JournalScreen()),
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildActionCard(
-                            context,
-                            icon: Icons.spa,
-                            title: 'Wellness',
-                            color: Colors.green,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const WellnessScreen(),
-                                ),
-                              );
-                            },
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildActionCard(
+                              context,
+                              icon: Icons.spa,
+                              title: 'Wellness',
+                              color: Colors.lightGreenAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const WellnessScreen(),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildActionCard(
-                            context,
-                            icon: Icons.people,
-                            title: 'Community',
-                            color: Colors.teal,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                createAnimatedRoute(const CommunityScreen()),
-                              );
-                            },
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionCard(
+                              context,
+                              icon: Icons.people,
+                              title: 'Community',
+                              color: Colors.tealAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  createAnimatedRoute(const CommunityScreen()),
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildActionCard(
-                            context,
-                            icon: Icons.medical_services,
-                            title: 'Find Therapist',
-                            color: Colors.red,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                createAnimatedRoute(
-                                  const TherapistMatchingScreen(),
-                                ),
-                              );
-                            },
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildActionCard(
+                              context,
+                              icon: Icons.medical_services,
+                              title: 'Find Therapist',
+                              color: Colors.redAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  createAnimatedRoute(
+                                    const TherapistMatchingScreen(),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
 
-                    // Recent Mood Summary
-                    Text(
-                      'Your Mood This Week',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                      // Daily Insights Carousel
+                      _buildDailyInsightsCarousel(context),
+                      const SizedBox(height: 24),
+
+                      // Recent Mood Summary
+                      Text(
+                        'Your Mood This Week',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildMoodSummaryCard(context),
-                  ],
+                      const SizedBox(height: 16),
+                      _buildMoodSummaryCard(context),
+                    ],
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 
   Widget _buildWelcomeCard(BuildContext context) {
     final userName = _currentUser?.name ?? 'User';
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.secondary,
+    return GlassContainer(
+      opacity: 0.2,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Theme.of(context).colorScheme.primary.withOpacity(0.4),
+              Theme.of(context).colorScheme.secondary.withOpacity(0.4),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Welcome back, $userName!',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'How are you feeling today?',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  createAnimatedRoute(const MoodTrackingScreen()),
+                ).then((_) => _loadMoodData());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Theme.of(context).colorScheme.primary,
+                elevation: 0,
+              ),
+              child: const Text('Check In'),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome back, $userName!',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'How are you feeling today?',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                createAnimatedRoute(const MoodTrackingScreen()),
-              ).then((_) => _loadMoodData());
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Theme.of(context).colorScheme.primary,
-            ),
-            child: const Text('Check In'),
-          ),
-        ],
       ),
     );
   }
@@ -388,8 +425,8 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 2,
+    return GlassContainer(
+      opacity: 0.15,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -401,9 +438,10 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
               const SizedBox(height: 8),
               Text(
                 title,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
@@ -414,17 +452,18 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
 
   Widget _buildMoodSummaryCard(BuildContext context) {
     if (_recentEntries.isEmpty) {
-      return Card(
+      return GlassContainer(
+        opacity: 0.15,
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
             child: Column(
               children: [
-                Icon(Icons.mood_outlined, size: 48, color: Colors.grey[400]),
+                Icon(Icons.mood_outlined, size: 48, color: Colors.white38),
                 const SizedBox(height: 16),
                 Text(
                   'No mood data this week',
-                  style: TextStyle(color: Colors.grey[600]),
+                  style: TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
@@ -434,6 +473,11 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                       createAnimatedRoute(const MoodTrackingScreen()),
                     ).then((_) => _loadMoodData());
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white24,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                  ),
                   child: const Text('Start Tracking'),
                 ),
               ],
@@ -456,14 +500,14 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
       'overwhelmed': Icons.sentiment_dissatisfied,
     };
     final moodColors = {
-      'happy': Colors.green,
-      'sad': Colors.blue,
-      'anxious': Colors.orange,
-      'stressed': Colors.red,
-      'angry': Colors.deepOrange,
-      'neutral': Colors.grey,
-      'depressed': Colors.purple,
-      'overwhelmed': Colors.pink,
+      'happy': Colors.lightGreenAccent,
+      'sad': Colors.lightBlueAccent,
+      'anxious': Colors.orangeAccent,
+      'stressed': Colors.redAccent,
+      'angry': Colors.deepOrangeAccent,
+      'neutral': Colors.white70,
+      'depressed': Colors.purpleAccent,
+      'overwhelmed': Colors.pinkAccent,
     };
 
     final moodByDay = <String, JournalEntryModel>{};
@@ -474,7 +518,8 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
       }
     }
 
-    return Card(
+    return GlassContainer(
+      opacity: 0.15,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -487,13 +532,13 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                   return _buildMoodDay(
                     day,
                     moodIcons[entry.mood] ?? Icons.sentiment_neutral,
-                    moodColors[entry.mood] ?? Colors.grey,
+                    moodColors[entry.mood] ?? Colors.white70,
                   );
                 } else {
                   return _buildMoodDay(
                     day,
                     Icons.circle_outlined,
-                    Colors.grey[300]!,
+                    Colors.white24,
                   );
                 }
               }).toList(),
@@ -506,6 +551,11 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                   createAnimatedRoute(const MoodTrackingScreen()),
                 ).then((_) => _loadMoodData());
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white24,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
               child: const Text('View Full Analytics'),
             ),
           ],
@@ -519,7 +569,122 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: 4),
-        Text(day, style: const TextStyle(fontSize: 12)),
+        Text(day, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+      ],
+    );
+  }
+
+  Widget _buildDailyInsightsCarousel(BuildContext context) {
+    final insights = [
+      {
+        'title': 'Mindfulness Tip',
+        'description':
+            'Take 5 minutes today to focus solely on your breathing. It reduces cortisol levels.',
+        'icon': Icons.spa,
+        'color': Colors.lightGreenAccent,
+      },
+      {
+        'title': 'Daily Reflection',
+        'description':
+            'What is one thing you are grateful for today? Writing it down improves mood.',
+        'icon': Icons.edit_note,
+        'color': Colors.orangeAccent,
+      },
+      {
+        'title': 'Self-Care Reminder',
+        'description':
+            'Hydration is key for mental clarity. Don\'t forget to drink water!',
+        'icon': Icons.water_drop,
+        'color': Colors.lightBlueAccent,
+      },
+      {
+        'title': 'Connection',
+        'description':
+            'Reach out to a friend today. Human connection is a powerful stress buffer.',
+        'icon': Icons.people,
+        'color': Colors.pinkAccent,
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Daily Insights',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 16),
+        CarouselSlider(
+          options: CarouselOptions(
+            height: 140,
+            enlargeCenterPage: true,
+            autoPlay: true,
+            aspectRatio: 2.0,
+            autoPlayCurve: Curves.fastOutSlowIn,
+            enableInfiniteScroll: true,
+            autoPlayAnimationDuration: const Duration(milliseconds: 1000),
+            viewportFraction: 0.9,
+          ),
+          items: insights.map((insight) {
+            return Builder(
+              builder: (BuildContext context) {
+                return GlassContainer(
+                  opacity: 0.15,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width,
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: (insight['color'] as Color).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            insight['icon'] as IconData,
+                            color: insight['color'] as Color,
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                insight['title'] as String,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                insight['description'] as String,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ),
       ],
     );
   }

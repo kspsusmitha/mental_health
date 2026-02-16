@@ -32,6 +32,19 @@ class _RegisterScreenState extends State<RegisterScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  // Therapist Availability State
+  final Map<String, bool> _selectedDays = {
+    'Monday': false,
+    'Tuesday': false,
+    'Wednesday': false,
+    'Thursday': false,
+    'Friday': false,
+    'Saturday': false,
+    'Sunday': false,
+  };
+  final Map<String, TimeOfDay> _startTimes = {};
+  final Map<String, TimeOfDay> _endTimes = {};
+
   @override
   void initState() {
     super.initState();
@@ -110,6 +123,9 @@ class _RegisterScreenState extends State<RegisterScreen>
         _passwordController.text,
         _nameController.text.trim(),
         _selectedUserType,
+        availability: widget.selectedUserType == UserType.therapist
+            ? _getAvailabilityMap()
+            : null,
       );
 
       if (user != null && mounted) {
@@ -427,6 +443,55 @@ class _RegisterScreenState extends State<RegisterScreen>
                                 },
                               ),
                             ),
+                            const SizedBox(height: 16),
+                            if (widget.selectedUserType ==
+                                UserType.therapist) ...[
+                              const SizedBox(height: 16),
+                              _buildAnimatedField(
+                                delay: 450,
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Weekly Availability',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'Select days and times you are available:',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ...[
+                                        'Monday',
+                                        'Tuesday',
+                                        'Wednesday',
+                                        'Thursday',
+                                        'Friday',
+                                        'Saturday',
+                                        'Sunday',
+                                      ].map((day) {
+                                        return _buildDayAvailability(day);
+                                      }).toList(),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 32),
                             _buildAnimatedField(
                               delay: 500,
@@ -575,5 +640,95 @@ class _RegisterScreenState extends State<RegisterScreen>
         child: child,
       ),
     );
+  }
+
+  Widget _buildDayAvailability(String day) {
+    final isSelected = _selectedDays[day] ?? false;
+    final startTime = _startTimes[day] ?? const TimeOfDay(hour: 9, minute: 0);
+    final endTime = _endTimes[day] ?? const TimeOfDay(hour: 17, minute: 0);
+
+    return Column(
+      children: [
+        CheckboxListTile(
+          title: Text(day),
+          value: isSelected,
+          onChanged: (val) {
+            setState(() {
+              _selectedDays[day] = val ?? false;
+              if (val == true) {
+                _startTimes[day] = const TimeOfDay(hour: 9, minute: 0);
+                _endTimes[day] = const TimeOfDay(hour: 17, minute: 0);
+              }
+            });
+          },
+          dense: true,
+          activeColor: const Color(0xFF667EEA),
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+        ),
+        if (isSelected)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, bottom: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: startTime,
+                      );
+                      if (time != null) {
+                        setState(() => _startTimes[day] = time);
+                      }
+                    },
+                    child: Text('Start: ${_formatTime(startTime)}'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: endTime,
+                      );
+                      if (time != null) {
+                        setState(() => _endTimes[day] = time);
+                      }
+                    },
+                    child: Text('End: ${_formatTime(endTime)}'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute $period';
+  }
+
+  Map<String, List<String>> _getAvailabilityMap() {
+    final Map<String, List<String>> availability = {};
+    _selectedDays.forEach((day, isSelected) {
+      if (isSelected) {
+        final start = _formatTimeForDb(_startTimes[day]!);
+        final end = _formatTimeForDb(_endTimes[day]!);
+        availability[day] = ['$start-$end'];
+      }
+    });
+    return availability;
+  }
+
+  String _formatTimeForDb(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }

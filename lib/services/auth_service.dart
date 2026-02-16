@@ -86,7 +86,9 @@ class AuthService {
         }
       } else {
         // Check all nodes if no type specified
-        final nodes = ['users', 'therapists', 'admins'];
+        // PRIORITIZE SPECIFIC ROLES: Check therapists and admins BEFORE users
+        // This is crucial because therapists also have a basic entry in 'users' node
+        final nodes = ['therapists', 'admins', 'users'];
         for (var node in nodes) {
           try {
             final usersData = await _database.readList(node);
@@ -149,8 +151,9 @@ class AuthService {
     String email,
     String password,
     String name,
-    UserType userType,
-  ) async {
+    UserType userType, {
+    Map<String, List<String>>? availability,
+  }) async {
     try {
       // Prevent admin registration - admins have predefined credentials
       if (userType == UserType.admin) {
@@ -202,37 +205,26 @@ class AuthService {
 
       // Create user model
       if (userType == UserType.therapist) {
-        // For therapist, create TherapistModel with default values
-        // Note: isVerified is set to true for now to allow immediate testing/visibility
-        // In a real app, this should probably be false until admin approval
+        // Create therapist model with default values
         final therapistModel = TherapistModel(
           id: userId,
           userId: userId,
           name: name.trim(),
           email: email.trim(),
-          password: password, // Saving plain text password
-          specialization: 'General Therapist', // Default
-          bio: 'No bio available yet.', // Default
-          isVerified: false, // Must be verified by admin
-          rating: 5.0, // Default start rating
+          password: password,
+          specialization: 'General Therapist',
+          bio: 'No bio available yet.',
+          isVerified: false,
+          rating: 5.0,
           totalSessions: 0,
+          availability: availability,
         );
 
         // Save therapist data to therapists node
         await _database.writeData('therapists/$userId', therapistModel.toMap());
 
-        // Also create a basic user entry for auth referencing
-        final basicUser = UserModel(
-          id: userId,
-          email: email.trim(),
-          name: name.trim(),
-          password: password,
-          userType: userType,
-          createdAt: DateTime.now(),
-        );
-
         // Return this for immediate local use
-        _currentUser = basicUser;
+        _currentUser = therapistModel;
 
         // Save authentication data (password hash)
         await _database.writeData('auth/$userId', {
@@ -247,7 +239,7 @@ class AuthService {
         await prefs.setString('current_user_id', userId);
         await prefs.setString('current_user_type', userType.toString());
 
-        return basicUser;
+        return therapistModel;
       } else {
         // Standard user
         final userModel = UserModel(
@@ -260,6 +252,7 @@ class AuthService {
         );
 
         // Save user data to the appropriate node
+        final nodePath = _getNodePath(userType);
         await _database.writeData('$nodePath/$userId', userModel.toMap());
 
         _currentUser = userModel;
