@@ -68,6 +68,8 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
   @override
   Widget build(BuildContext context) {
     return AnimatedBackground(
+      imageUrl:
+          'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=2070&auto=format&fit=crop', // Stunning nature scene
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -105,10 +107,17 @@ class _ModuleSelectionScreenState extends State<ModuleSelectionScreen>
                                   ),
                                 ],
                               ),
-                              child: const Icon(
-                                Icons.health_and_safety,
-                                size: 60,
-                                color: Color(0xFF667EEA),
+                              child: ClipOval(
+                                child: Image.network(
+                                  'https://images.unsplash.com/photo-1544367563-12123d8965cd?q=80&w=200&auto=format&fit=crop',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(
+                                        Icons.health_and_safety,
+                                        size: 60,
+                                        color: Color(0xFF667EEA),
+                                      ),
+                                ),
                               ),
                             ),
                           ),

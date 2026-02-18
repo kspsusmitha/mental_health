@@ -47,28 +47,52 @@ class RealtimeDatabaseService {
   // Get list of data from a path
   Future<List<Map<String, dynamic>>> readList(String path) async {
     try {
+      print('RealtimeDatabase: Reading list from $path');
       final snapshot = await _database.child(path).get();
-      if (snapshot.exists) {
-        final data = snapshot.value;
-        if (data is Map) {
-          return data.entries.map((entry) {
-            final value = entry.value;
-            if (value is Map) {
-              final map = Map<String, dynamic>.from(value);
-              // Ensure id field is set from the key if not present
-              if (!map.containsKey('id') ||
-                  map['id'] == null ||
-                  map['id'] == '') {
-                map['id'] = entry.key;
-              }
-              return map;
-            }
-            return <String, dynamic>{'id': entry.key};
-          }).toList();
-        }
+      if (!snapshot.exists) {
+        print('RealtimeDatabase: Snapshot does not exist for $path');
+        return [];
       }
+
+      final data = snapshot.value;
+      print('RealtimeDatabase: Data type for $path is ${data.runtimeType}');
+
+      if (data is Map) {
+        final List<Map<String, dynamic>> result = [];
+        data.forEach((key, value) {
+          if (value is Map) {
+            final map = Map<String, dynamic>.from(value);
+            if (!map.containsKey('id') ||
+                map['id'] == null ||
+                map['id'] == '') {
+              map['id'] = key.toString();
+            }
+            result.add(map);
+          }
+        });
+        print('RealtimeDatabase: Returning ${result.length} items from Map');
+        return result;
+      } else if (data is List) {
+        final List<Map<String, dynamic>> result = [];
+        for (int i = 0; i < data.length; i++) {
+          final value = data[i];
+          if (value is Map) {
+            final map = Map<String, dynamic>.from(value);
+            if (!map.containsKey('id') ||
+                map['id'] == null ||
+                map['id'] == '') {
+              map['id'] = i.toString();
+            }
+            result.add(map);
+          }
+        }
+        print('RealtimeDatabase: Returning ${result.length} items from List');
+        return result;
+      }
+      print('RealtimeDatabase: Unsupported data type: ${data.runtimeType}');
       return [];
     } catch (e) {
+      print('RealtimeDatabase: Error reading list from $path: $e');
       throw Exception('Failed to read list: $e');
     }
   }

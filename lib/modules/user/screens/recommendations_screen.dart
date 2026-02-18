@@ -17,7 +17,6 @@ class RecommendationsScreen extends StatefulWidget {
 }
 
 class _RecommendationsScreenState extends State<RecommendationsScreen> {
-  final RecommendationService _recommendationService = RecommendationService();
   List<Recommendation> _recommendations = [];
   bool _isLoading = true;
 
@@ -31,9 +30,13 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     setState(() => _isLoading = true);
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final recommendationService = Provider.of<RecommendationService>(
+        context,
+        listen: false,
+      );
       final userId = authService.currentUser?.id;
       if (userId != null) {
-        final recommendations = await _recommendationService
+        final recommendations = await recommendationService
             .getPersonalizedRecommendations(userId);
         setState(() {
           _recommendations = recommendations;

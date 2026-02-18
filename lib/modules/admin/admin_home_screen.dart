@@ -161,20 +161,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   _buildActionCard(
                     context,
-                    icon: Icons.approval,
-                    title: 'Approve Content',
-                    color: Colors.orangeAccent,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ContentApprovalScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildActionCard(
-                    context,
                     icon: Icons.add_circle,
                     title: 'Add Resource',
                     color: Colors.purpleAccent,

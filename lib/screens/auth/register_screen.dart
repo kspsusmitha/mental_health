@@ -22,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _ageController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
@@ -94,6 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _ageController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _animationController.dispose();
@@ -123,6 +125,9 @@ class _RegisterScreenState extends State<RegisterScreen>
         _passwordController.text,
         _nameController.text.trim(),
         _selectedUserType,
+        age: _selectedUserType == UserType.user
+            ? int.tryParse(_ageController.text)
+            : null,
         availability: widget.selectedUserType == UserType.therapist
             ? _getAvailabilityMap()
             : null,
@@ -178,9 +183,19 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   @override
   Widget build(BuildContext context) {
+    String getBackgroundImage() {
+      switch (_selectedUserType) {
+        case UserType.therapist:
+          return 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=2070&auto=format&fit=crop';
+        case UserType.admin:
+          return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop';
+        default:
+          return 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2071&auto=format&fit=crop';
+      }
+    }
+
     return AnimatedBackground(
-      imageUrl:
-          'https://images.unsplash.com/photo-1544367563-12123d8965cd?q=80&w=2070&auto=format&fit=crop',
+      imageUrl: getBackgroundImage(),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
@@ -234,10 +249,18 @@ class _RegisterScreenState extends State<RegisterScreen>
                                           ),
                                         ],
                                       ),
-                                      child: const Icon(
-                                        Icons.person_add,
-                                        size: 50,
-                                        color: Color(0xFF667EEA),
+                                      child: ClipOval(
+                                        child: Image.network(
+                                          'https://images.unsplash.com/photo-1544367563-12123d8965cd?q=80&w=200&auto=format&fit=crop',
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  const Icon(
+                                                    Icons.person_add,
+                                                    size: 50,
+                                                    color: Color(0xFF667EEA),
+                                                  ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -379,6 +402,27 @@ class _RegisterScreenState extends State<RegisterScreen>
                                 },
                               ),
                             ),
+                            if (_selectedUserType == UserType.user) ...[
+                              const SizedBox(height: 16),
+                              _buildAnimatedField(
+                                delay: 250,
+                                child: _buildTextField(
+                                  controller: _ageController,
+                                  label: 'Age',
+                                  icon: Icons.calendar_today,
+                                  keyboardType: TextInputType.number,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your age';
+                                    }
+                                    if (int.tryParse(value) == null) {
+                                      return 'Please enter a valid number';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ],
 
                             const SizedBox(height: 16),
                             _buildAnimatedField(

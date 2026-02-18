@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:crypto/crypto.dart';
 import '../models/user_model.dart';
 import '../models/therapist_model.dart';
@@ -6,9 +7,14 @@ import 'realtime_database_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../modules/admin/admin_credentials.dart';
 
+import 'mental_health_api_service.dart';
+
 class AuthService {
   final RealtimeDatabaseService _database = RealtimeDatabaseService();
+  final MentalHealthApiService apiService;
   UserModel? _currentUser;
+
+  AuthService({required this.apiService});
 
   // Get current user
   UserModel? get currentUser => _currentUser;
@@ -46,6 +52,9 @@ class AuthService {
       if (userId != null && userTypeStr != null) {
         final userType = UserType.fromString(userTypeStr);
         _currentUser = await getUserData(userId, userType);
+        if (_currentUser?.apiKey != null) {
+          apiService.setApiKey(_currentUser!.apiKey!);
+        }
       }
     } catch (e) {
       _currentUser = null;
@@ -87,7 +96,6 @@ class AuthService {
       } else {
         // Check all nodes if no type specified
         // PRIORITIZE SPECIFIC ROLES: Check therapists and admins BEFORE users
-        // This is crucial because therapists also have a basic entry in 'users' node
         final nodes = ['therapists', 'admins', 'users'];
         for (var node in nodes) {
           try {
@@ -135,6 +143,11 @@ class AuthService {
       // Set current user
       _currentUser = foundUser;
 
+      // Set API Key if available
+      if (foundUser.apiKey != null) {
+        apiService.setApiKey(foundUser.apiKey!);
+      }
+
       // Save to shared preferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('current_user_id', foundUser.id);
@@ -152,6 +165,7 @@ class AuthService {
     String password,
     String name,
     UserType userType, {
+    int? age,
     Map<String, List<String>>? availability,
   }) async {
     try {
@@ -165,6 +179,11 @@ class AuthService {
       // Validate inputs
       if (email.isEmpty || password.isEmpty || name.isEmpty) {
         throw Exception('All fields are required');
+      }
+
+      // Standard users must have age
+      if (userType == UserType.user && age == null) {
+        throw Exception('Age is required for user registration');
       }
 
       // Get the node path for this user type
@@ -181,20 +200,16 @@ class AuthService {
               throw Exception('Email already registered');
             }
           } catch (e) {
-            // If it's the email already registered exception, rethrow it
             if (e.toString().contains('Email already registered')) {
               rethrow;
             }
-            // Skip invalid user data
             continue;
           }
         }
       } catch (e) {
-        // If it's the email already registered exception, rethrow it
         if (e.toString().contains('Email already registered')) {
           rethrow;
         }
-        // If reading users fails (e.g., no users exist yet), continue with registration
       }
 
       // Generate user ID
@@ -204,14 +219,29 @@ class AuthService {
       final passwordHash = _hashPassword(password);
 
       // Create user model
+      String? apiKey;
+      if (userType == UserType.user && age != null) {
+        try {
+          final result = await apiService.onboard(
+            name,
+            age,
+            'New customer registration',
+          );
+          apiKey = result['api_key'] ?? result['apiKey'];
+        } catch (e) {
+          debugPrint('Onboarding failed, but continuing: $e');
+          // For now, we continue even if onboarding fails, but in production we might require it
+        }
+      }
+
       if (userType == UserType.therapist) {
-        // Create therapist model with default values
         final therapistModel = TherapistModel(
           id: userId,
           userId: userId,
           name: name.trim(),
           email: email.trim(),
           password: password,
+          apiKey: apiKey,
           specialization: 'General Therapist',
           bio: 'No bio available yet.',
           isVerified: false,
@@ -220,13 +250,10 @@ class AuthService {
           availability: availability,
         );
 
-        // Save therapist data to therapists node
         await _database.writeData('therapists/$userId', therapistModel.toMap());
-
-        // Return this for immediate local use
         _currentUser = therapistModel;
+        if (apiKey != null) apiService.setApiKey(apiKey);
 
-        // Save authentication data (password hash)
         await _database.writeData('auth/$userId', {
           'email': email.toLowerCase().trim(),
           'passwordHash': passwordHash,
@@ -234,7 +261,6 @@ class AuthService {
           'createdAt': DateTime.now().millisecondsSinceEpoch,
         });
 
-        // Save to shared preferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('current_user_id', userId);
         await prefs.setString('current_user_type', userType.toString());
@@ -247,17 +273,17 @@ class AuthService {
           email: email.trim(),
           name: name.trim(),
           password: password,
+          apiKey: apiKey,
           userType: userType,
           createdAt: DateTime.now(),
+          additionalInfo: {'age': age},
         );
 
-        // Save user data to the appropriate node
-        final nodePath = _getNodePath(userType);
         await _database.writeData('$nodePath/$userId', userModel.toMap());
 
         _currentUser = userModel;
+        if (apiKey != null) apiService.setApiKey(apiKey);
 
-        // Save authentication data (password hash)
         await _database.writeData('auth/$userId', {
           'email': email.toLowerCase().trim(),
           'passwordHash': passwordHash,
@@ -265,7 +291,6 @@ class AuthService {
           'createdAt': DateTime.now().millisecondsSinceEpoch,
         });
 
-        // Save to shared preferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('current_user_id', userId);
         await prefs.setString('current_user_type', userType.toString());
@@ -273,7 +298,6 @@ class AuthService {
         return userModel;
       }
     } catch (e) {
-      // Re-throw if it's already a formatted exception
       if (e.toString().contains('Email already registered')) {
         rethrow;
       }

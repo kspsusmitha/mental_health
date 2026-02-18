@@ -106,6 +106,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           title: title,
           body: body,
           type: type,
+          data: {'appointmentId': appointment.id, 'type': 'appointment_status'},
         );
       }
 

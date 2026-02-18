@@ -185,14 +185,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
       appBar: AppBar(
         title: const Row(
           children: [
-            Icon(Icons.smart_toy, color: Colors.white),
+            Icon(Icons.smart_toy),
             SizedBox(width: 8),
-            Text('AI Support Assistant', style: TextStyle(color: Colors.white)),
+            Text('AI Support Assistant'),
           ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: AnimatedBackground(
         imageUrl:
@@ -205,17 +204,17 @@ class _AIChatScreenState extends State<AIChatScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.chat_bubble_outline,
                             size: 64,
-                            color: Colors.white60,
+                            color: Colors.black26,
                           ),
                           const SizedBox(height: 16),
                           const Text(
                             'Start a conversation with AI',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Colors.white70,
+                              color: Colors.black54,
                             ),
                           ),
                         ],
@@ -248,7 +247,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                     ),
             ),
             GlassContainer(
-              opacity: 0.2,
+              opacity: 0.6,
               borderRadius: BorderRadius.zero,
               child: Padding(
                 padding: const EdgeInsets.all(8),
@@ -257,26 +256,30 @@ class _AIChatScreenState extends State<AIChatScreen> {
                     Expanded(
                       child: TextField(
                         controller: _messageController,
-                        style: const TextStyle(color: Colors.white),
+                        style: const TextStyle(color: Colors.black87),
                         decoration: InputDecoration(
                           hintText: 'Type your message...',
-                          hintStyle: const TextStyle(color: Colors.white60),
+                          hintStyle: const TextStyle(color: Colors.black45),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide: const BorderSide(color: Colors.white54),
+                            borderSide: const BorderSide(color: Colors.black12),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide: const BorderSide(color: Colors.white54),
+                            borderSide: const BorderSide(color: Colors.black12),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide: const BorderSide(color: Colors.white),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).primaryColor,
+                            ),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
                           ),
+                          filled: true,
+                          fillColor: Colors.black.withOpacity(0.05),
                         ),
                         maxLines: null,
                         textCapitalization: TextCapitalization.sentences,
@@ -288,8 +291,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
                       onPressed: _isLoading ? null : _sendMessage,
                       icon: const Icon(Icons.send),
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.blue,
+                        backgroundColor: Theme.of(context).primaryColor,
+                        foregroundColor: Colors.white,
                       ),
                     ),
                   ],
@@ -305,41 +308,71 @@ class _AIChatScreenState extends State<AIChatScreen> {
   Widget _buildMessageBubble(MessageModel message, bool isUser) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        decoration: BoxDecoration(
-          color: isUser
-              ? Theme.of(context).colorScheme.primary
-              : Colors.grey[200],
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message.content,
-              style: TextStyle(
-                color: isUser ? Colors.white : Colors.black87,
-                fontSize: 16,
+      child: isUser
+          ? Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.75,
+              ),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                  bottomLeft: Radius.circular(20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).primaryColor.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    message.content,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatTime(message.timestamp),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : GlassContainer(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              width: MediaQuery.of(context).size.width * 0.75,
+              opacity: 0.6,
+              borderRadius: BorderRadius.circular(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.content,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _formatTime(message.timestamp),
+                    style: const TextStyle(color: Colors.black45, fontSize: 10),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              _formatTime(message.timestamp),
-              style: TextStyle(
-                color: isUser
-                    ? Colors.white.withOpacity(0.7)
-                    : Colors.grey[600],
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

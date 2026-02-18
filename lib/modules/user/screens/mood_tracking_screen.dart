@@ -31,7 +31,6 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
   bool _isAnalyzing = false;
   EmotionAnalysisModel? _analysisResult;
   List<Recommendation> _recommendations = [];
-  final RecommendationService _recommendationService = RecommendationService();
   bool _showCalendar = false;
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
@@ -257,9 +256,11 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       final moodScore =
           (_moodIntensity / 10.0) * 0.5 + (analysis.overallScore * 0.5);
 
+      final checkId = const Uuid().v4();
+
       // Save mood check details
       final moodCheckData = {
-        'id': const Uuid().v4(),
+        'id': checkId,
         'userId': _currentUserId!,
         'mood': mood,
         'moodScore': moodScore.clamp(0.0, 1.0),
@@ -273,13 +274,14 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       };
 
       await dbService.writeData(
-        '$userNodePath/$userId/mood_checks/${moodCheckData['id']}',
+        '$userNodePath/$userId/mood_checks/$checkId',
         moodCheckData,
       );
 
       // Save as journal entry (mood checks also create journal entries)
+      // Use the SAME ID as mood check for easy linking/deletion
       final entry = JournalEntryModel(
-        id: const Uuid().v4(),
+        id: checkId,
         userId: _currentUserId!,
         content: descriptionText.isNotEmpty
             ? descriptionText
@@ -293,7 +295,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       );
 
       await dbService.writeData(
-        '$userNodePath/$userId/journal_entries/${entry.id}',
+        '$userNodePath/$userId/journal_entries/$checkId',
         entry.toMap(),
       );
 
@@ -304,7 +306,11 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       );
 
       // Get personalized recommendations based on current mood
-      final recommendations = await _recommendationService
+      final recommendationService = Provider.of<RecommendationService>(
+        context,
+        listen: false,
+      );
+      final recommendations = await recommendationService
           .getPersonalizedRecommendations(_currentUserId!);
 
       setState(() {
@@ -357,6 +363,65 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       });
     } catch (e) {
       debugPrint('Error loading mood history: $e');
+    }
+  }
+
+  Future<void> _deleteMoodCheck(String checkId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Mood Check'),
+        content: const Text(
+          'Are you sure you want to delete this mood check? This will also remove the corresponding journal entry.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final dbService = Provider.of<RealtimeDatabaseService>(
+        context,
+        listen: false,
+      );
+      final userNodePath = authService.getCurrentUserNodePath();
+      if (userNodePath == null) return;
+
+      // Delete from mood_checks
+      await dbService.deleteData(
+        '$userNodePath/$_currentUserId/mood_checks/$checkId',
+      );
+
+      // Also try to delete from journal_entries (they share the same ID for new entries)
+      await dbService.deleteData(
+        '$userNodePath/$_currentUserId/journal_entries/$checkId',
+      );
+
+      _loadMoodHistory();
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Mood check-in deleted')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting mood check: $e')),
+        );
+      }
     }
   }
 
@@ -419,27 +484,28 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                   children: [
                     // Welcome Card
                     GlassContainer(
-                      opacity: 0.1,
+                      opacity: 0.6,
                       child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: Column(
                           children: [
-                            Icon(Icons.mood, size: 48, color: Colors.white),
+                            Icon(
+                              Icons.mood,
+                              size: 48,
+                              color: Theme.of(context).primaryColor,
+                            ),
                             const SizedBox(height: 12),
                             Text(
                               'How are you feeling right now?',
                               style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Take a moment to check in with yourself',
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: Colors.black54,
                                 fontSize: 14,
                               ),
                               textAlign: TextAlign.center,
@@ -452,7 +518,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
 
                     // Overall Mood Selection
                     GlassContainer(
-                      opacity: 0.1,
+                      opacity: 0.6,
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -462,16 +528,13 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                               children: [
                                 Icon(
                                   Icons.sentiment_satisfied,
-                                  color: Colors.white,
+                                  color: Theme.of(context).primaryColor,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Overall Mood',
                                   style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -491,20 +554,29 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                                           : null,
                                     );
                                   },
-                                  selectedColor: Colors.white.withOpacity(0.3),
-                                  checkmarkColor: Colors.white,
-                                  backgroundColor: Colors.white10,
+                                  selectedColor: Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.2),
+                                  checkmarkColor: Theme.of(
+                                    context,
+                                  ).primaryColor,
+                                  backgroundColor: Colors.black.withOpacity(
+                                    0.05,
+                                  ),
                                   labelStyle: TextStyle(
                                     color: isSelected
-                                        ? Colors.white
-                                        : Colors.white70,
+                                        ? Theme.of(context).primaryColor
+                                        : Colors.black87,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(20),
                                     side: BorderSide(
                                       color: isSelected
-                                          ? Colors.white
-                                          : Colors.white24,
+                                          ? Theme.of(context).primaryColor
+                                          : Colors.transparent,
                                     ),
                                   ),
                                 );
@@ -518,7 +590,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
 
                     // Mood Intensity Slider
                     GlassContainer(
-                      opacity: 0.1,
+                      opacity: 0.6,
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -526,15 +598,15 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.speed, color: Colors.white),
+                                Icon(
+                                  Icons.speed,
+                                  color: Theme.of(context).primaryColor,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Intensity Level',
                                   style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -544,19 +616,25 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                               style: Theme.of(context).textTheme.headlineSmall
                                   ?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: Theme.of(context).primaryColor,
                                   ),
                             ),
                             const SizedBox(height: 8),
                             SliderTheme(
                               data: SliderTheme.of(context).copyWith(
-                                activeTrackColor: Colors.white,
-                                inactiveTrackColor: Colors.white24,
-                                thumbColor: Colors.white,
-                                overlayColor: Colors.white.withOpacity(0.1),
-                                valueIndicatorColor: Colors.white,
+                                activeTrackColor: Theme.of(
+                                  context,
+                                ).primaryColor,
+                                inactiveTrackColor: Colors.black12,
+                                thumbColor: Theme.of(context).primaryColor,
+                                overlayColor: Theme.of(
+                                  context,
+                                ).primaryColor.withOpacity(0.1),
+                                valueIndicatorColor: Theme.of(
+                                  context,
+                                ).primaryColor,
                                 valueIndicatorTextStyle: const TextStyle(
-                                  color: Colors.blue,
+                                  color: Colors.white,
                                 ),
                               ),
                               child: Slider(
@@ -576,14 +654,14 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                                 Text(
                                   'Low',
                                   style: TextStyle(
-                                    color: Colors.white70,
+                                    color: Colors.black54,
                                     fontSize: 12,
                                   ),
                                 ),
                                 Text(
                                   'High',
                                   style: TextStyle(
-                                    color: Colors.white70,
+                                    color: Colors.black54,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -599,7 +677,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                     ..._emotionSuggestions.entries.map((entry) {
                       return GlassContainer(
                         margin: const EdgeInsets.only(bottom: 16),
-                        opacity: 0.1,
+                        opacity: 0.6,
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
@@ -614,10 +692,10 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                                         ? Icons.sentiment_dissatisfied
                                         : Icons.sentiment_neutral,
                                     color: entry.key == 'Positive'
-                                        ? Colors.greenAccent
+                                        ? Colors.green
                                         : entry.key == 'Negative'
-                                        ? Colors.redAccent
-                                        : Colors.white70,
+                                        ? Colors.red
+                                        : Colors.blueGrey,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
@@ -625,10 +703,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
+                                        ?.copyWith(fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -644,22 +719,26 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                                     label: Text(emotion),
                                     selected: isSelected,
                                     onSelected: (_) => _toggleEmotion(emotion),
-                                    selectedColor: Colors.white.withOpacity(
-                                      0.3,
+                                    selectedColor: Theme.of(
+                                      context,
+                                    ).primaryColor.withOpacity(0.2),
+                                    checkmarkColor: Theme.of(
+                                      context,
+                                    ).primaryColor,
+                                    backgroundColor: Colors.black.withOpacity(
+                                      0.05,
                                     ),
-                                    checkmarkColor: Colors.white,
-                                    backgroundColor: Colors.white10,
                                     labelStyle: TextStyle(
                                       color: isSelected
-                                          ? Colors.white
-                                          : Colors.white70,
+                                          ? Theme.of(context).primaryColor
+                                          : Colors.black87,
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
                                       side: BorderSide(
                                         color: isSelected
-                                            ? Colors.white
-                                            : Colors.white24,
+                                            ? Theme.of(context).primaryColor
+                                            : Colors.transparent,
                                       ),
                                     ),
                                   );
@@ -675,7 +754,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
 
                     // Description Text Field
                     GlassContainer(
-                      opacity: 0.1,
+                      opacity: 0.6,
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -683,23 +762,23 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.edit_note, color: Colors.white),
+                                Icon(
+                                  Icons.edit_note,
+                                  color: Theme.of(context).primaryColor,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Describe Your Feelings',
                                   style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 8),
-                            Text(
+                            const Text(
                               'Optional: Add more details about what you\'re experiencing',
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: Colors.black54,
                                 fontSize: 12,
                               ),
                             ),
@@ -707,33 +786,31 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                             TextField(
                               controller: _descriptionController,
                               maxLines: 5,
-                              style: const TextStyle(color: Colors.white),
+                              style: const TextStyle(color: Colors.black87),
                               decoration: InputDecoration(
                                 hintText:
                                     'What\'s on your mind? What\'s causing these feelings?',
                                 hintStyle: const TextStyle(
-                                  color: Colors.white54,
+                                  color: Colors.black38,
                                 ),
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: Colors.white24,
-                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
                                 ),
                                 enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(16),
                                   borderSide: const BorderSide(
-                                    color: Colors.white24,
+                                    color: Colors.black12,
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Theme.of(context).primaryColor,
                                   ),
                                 ),
                                 filled: true,
-                                fillColor: Colors.white.withOpacity(0.05),
+                                fillColor: Colors.black.withOpacity(0.05),
                               ),
                             ),
                           ],
@@ -748,12 +825,13 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                       child: ElevatedButton(
                         onPressed: _isAnalyzing ? null : _saveMoodCheck,
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.blue,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          backgroundColor: Theme.of(context).primaryColor,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                           ),
+                          elevation: 4,
                         ),
                         child: _isAnalyzing
                             ? const SizedBox(
@@ -761,18 +839,20 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: Colors.white,
                                 ),
                               )
                             : const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.check_circle_outline),
-                                  SizedBox(width: 8),
+                                  SizedBox(width: 12),
                                   Text(
                                     'Save Mood Check',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                 ],
@@ -800,7 +880,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
 
   Widget _buildAnalysisResult(EmotionAnalysisModel analysis) {
     return GlassContainer(
-      opacity: 0.2,
+      opacity: 0.6,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -808,14 +888,17 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.insights, color: Colors.white, size: 28),
+                Icon(
+                  Icons.insights,
+                  color: Theme.of(context).primaryColor,
+                  size: 28,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Analysis Results',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -828,10 +911,9 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
             const SizedBox(height: 20),
             Text(
               'Suggested Actions',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             ...analysis.suggestedActions.map(
@@ -842,7 +924,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                   children: [
                     Icon(
                       Icons.check_circle,
-                      color: Colors.greenAccent,
+                      color: Theme.of(context).primaryColor,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -851,7 +933,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                         action,
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Colors.white,
+                          color: Colors.black87,
                         ),
                       ),
                     ),
@@ -1008,14 +1090,13 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(
             children: [
-              const Icon(Icons.recommend, color: Colors.white),
+              Icon(Icons.recommend, color: Theme.of(context).primaryColor),
               const SizedBox(width: 8),
               Text(
                 'Recommended for You',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -1060,13 +1141,13 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
     }
 
     return GlassContainer(
-      opacity: 0.1,
+      opacity: 0.6,
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color),
@@ -1075,7 +1156,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
           recommendation.title,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Colors.black87,
           ),
         ),
         subtitle: Column(
@@ -1086,14 +1167,14 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
               recommendation.description,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white70),
+              style: const TextStyle(color: Colors.black54),
             ),
           ],
         ),
         trailing: const Icon(
           Icons.arrow_forward_ios,
           size: 16,
-          color: Colors.white54,
+          color: Colors.black26,
         ),
         onTap: () {
           if (recommendation.type == RecommendationType.journaling) {
@@ -1121,7 +1202,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
       children: [
         GlassContainer(
           margin: const EdgeInsets.fromLTRB(16, 100, 16, 16),
-          opacity: 0.1,
+          opacity: 0.6,
           child: TableCalendar(
             firstDay: DateTime.utc(2020, 1, 1),
             lastDay: DateTime.now(),
@@ -1144,36 +1225,44 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
             onPageChanged: (focusedDay) {
               _focusedDay = focusedDay;
             },
-            calendarStyle: const CalendarStyle(
-              defaultTextStyle: TextStyle(color: Colors.white),
-              weekendTextStyle: TextStyle(color: Colors.white70),
-              outsideTextStyle: TextStyle(color: Colors.white24),
+            calendarStyle: CalendarStyle(
+              defaultTextStyle: const TextStyle(color: Colors.black87),
+              weekendTextStyle: const TextStyle(color: Colors.black45),
+              outsideTextStyle: const TextStyle(color: Colors.black12),
               selectedDecoration: BoxDecoration(
-                color: Colors.blueAccent,
+                color: Theme.of(context).primaryColor,
                 shape: BoxShape.circle,
               ),
               todayDecoration: BoxDecoration(
-                color: Colors.white24,
+                color: Theme.of(context).primaryColor.withOpacity(0.2),
                 shape: BoxShape.circle,
               ),
               markerDecoration: BoxDecoration(
-                color: Colors.greenAccent,
+                color: Theme.of(context).colorScheme.secondary,
                 shape: BoxShape.circle,
               ),
             ),
-            headerStyle: const HeaderStyle(
-              formatButtonTextStyle: TextStyle(color: Colors.white),
+            headerStyle: HeaderStyle(
+              formatButtonTextStyle: const TextStyle(color: Colors.black87),
               formatButtonDecoration: BoxDecoration(
-                border: Border.fromBorderSide(BorderSide(color: Colors.white)),
-                borderRadius: BorderRadius.all(Radius.circular(12.0)),
+                border: const Border.fromBorderSide(
+                  BorderSide(color: Colors.black26),
+                ),
+                borderRadius: const BorderRadius.all(Radius.circular(12.0)),
               ),
-              titleTextStyle: TextStyle(
-                color: Colors.white,
+              titleTextStyle: const TextStyle(
+                color: Colors.black,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
-              leftChevronIcon: Icon(Icons.chevron_left, color: Colors.white),
-              rightChevronIcon: Icon(Icons.chevron_right, color: Colors.white),
+              leftChevronIcon: Icon(
+                Icons.chevron_left,
+                color: Theme.of(context).primaryColor,
+              ),
+              rightChevronIcon: Icon(
+                Icons.chevron_right,
+                color: Theme.of(context).primaryColor,
+              ),
             ),
             eventLoader: (day) {
               // Check if we have mood check for this day
@@ -1279,7 +1368,7 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
     final icon = moodIcons[mood.toLowerCase()] ?? Icons.sentiment_neutral;
 
     return GlassContainer(
-      opacity: 0.1,
+      opacity: 0.6,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -1303,20 +1392,27 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                       ),
                       Text(
                         'Score: ${(moodScore * 100).toInt()}%',
-                        style: const TextStyle(color: Colors.white70),
+                        style: const TextStyle(color: Colors.black54),
                       ),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.redAccent,
+                  ),
+                  onPressed: () => _deleteMoodCheck(check['id']),
                 ),
               ],
             ),
             if (description.isNotEmpty) ...[
               const SizedBox(height: 16),
-              const Divider(color: Colors.white12),
+              const Divider(color: Colors.black12),
               const SizedBox(height: 16),
               Text(
                 description,
-                style: const TextStyle(fontSize: 16, color: Colors.white),
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
               ),
             ],
             if (emotions.isNotEmpty) ...[
@@ -1327,11 +1423,19 @@ class _MoodTrackingScreenState extends State<MoodTrackingScreen> {
                 children: emotions.map((emotion) {
                   return Chip(
                     label: Text(emotion, style: const TextStyle(fontSize: 12)),
-                    backgroundColor: Colors.white10,
-                    labelStyle: const TextStyle(color: Colors.white),
+                    backgroundColor: Theme.of(
+                      context,
+                    ).primaryColor.withOpacity(0.1),
+                    labelStyle: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                    ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 0,
+                    ),
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   );
                 }).toList(),

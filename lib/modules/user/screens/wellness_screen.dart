@@ -31,7 +31,6 @@ class _WellnessScreenState extends State<WellnessScreen>
   Set<String> _favorites = {};
   Map<String, int> _sessionCounts = {}; // resourceId -> count
   bool _isLoading = true;
-  final RecommendationService _recommendationService = RecommendationService();
 
   @override
   void initState() {
@@ -109,7 +108,11 @@ class _WellnessScreenState extends State<WellnessScreen>
       final authService = Provider.of<AuthService>(context, listen: false);
       final userId = authService.currentUser?.id;
       if (userId != null) {
-        final recommendations = await _recommendationService
+        final recommendationService = Provider.of<RecommendationService>(
+          context,
+          listen: false,
+        );
+        final recommendations = await recommendationService
             .getPersonalizedRecommendations(userId);
         setState(() => _recommendations = recommendations);
       }
@@ -339,15 +342,14 @@ class _WellnessScreenState extends State<WellnessScreen>
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Wellness', style: TextStyle(color: Colors.white)),
+        title: const Text('Wellness'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          indicatorColor: Colors.white,
+          labelColor: Colors.black87,
+          unselectedLabelColor: Colors.black45,
+          indicatorColor: Theme.of(context).primaryColor,
           tabs: const [
             Tab(icon: Icon(Icons.dashboard), text: 'All'),
             Tab(icon: Icon(Icons.self_improvement), text: 'Meditation'),
@@ -359,8 +361,10 @@ class _WellnessScreenState extends State<WellnessScreen>
         imageUrl:
             'https://images.unsplash.com/photo-1544367563-12123d8965cd?q=80&w=2070&auto=format&fit=crop',
         child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+            ? Center(
+                child: CircularProgressIndicator(
+                  color: Theme.of(context).primaryColor,
+                ),
               )
             : TabBarView(
                 controller: _tabController,
@@ -413,7 +417,7 @@ class _WellnessScreenState extends State<WellnessScreen>
     ];
 
     return GlassContainer(
-      opacity: 0.1,
+      opacity: 0.6,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -421,22 +425,26 @@ class _WellnessScreenState extends State<WellnessScreen>
           children: [
             Row(
               children: [
-                Icon(Icons.mood, color: Colors.white, size: 24),
+                Icon(
+                  Icons.mood,
+                  color: Theme.of(context).primaryColor,
+                  size: 24,
+                ),
                 const SizedBox(width: 8),
-                Text(
+                const Text(
                   'Daily Mood Check-in',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.black87,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'How are you feeling today?',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: Colors.black54, fontSize: 14),
             ),
             const SizedBox(height: 12),
             Row(
@@ -454,7 +462,7 @@ class _WellnessScreenState extends State<WellnessScreen>
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white10,
+                          color: Colors.black.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -465,7 +473,10 @@ class _WellnessScreenState extends State<WellnessScreen>
                       const SizedBox(height: 4),
                       Text(
                         mood['label']!,
-                        style: TextStyle(fontSize: 12, color: Colors.white70),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
                       ),
                     ],
                   ),
@@ -482,7 +493,7 @@ class _WellnessScreenState extends State<WellnessScreen>
     final topRecommendation = _recommendations.first;
 
     return GlassContainer(
-      opacity: 0.2, // Slightly more opaque for emphasis
+      opacity: 0.6,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -493,22 +504,22 @@ class _WellnessScreenState extends State<WellnessScreen>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.3),
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.auto_awesome,
-                    color: Colors.white,
+                    color: Theme.of(context).primaryColor,
                     size: 20,
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
+                const Text(
                   'AI Recommendation',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.black87,
                   ),
                 ),
               ],
@@ -516,16 +527,16 @@ class _WellnessScreenState extends State<WellnessScreen>
             const SizedBox(height: 12),
             Text(
               topRecommendation.title,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Colors.black87,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               topRecommendation.description,
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: const TextStyle(color: Colors.black54, fontSize: 14),
             ),
             const SizedBox(height: 12),
             ElevatedButton(
@@ -550,8 +561,8 @@ class _WellnessScreenState extends State<WellnessScreen>
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.purple,
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -566,7 +577,7 @@ class _WellnessScreenState extends State<WellnessScreen>
 
   Widget _buildContinueLastSession() {
     return GlassContainer(
-      opacity: 0.1,
+      opacity: 0.6,
       child: InkWell(
         onTap: () => _playResource(_lastSession!),
         child: Padding(
@@ -576,12 +587,12 @@ class _WellnessScreenState extends State<WellnessScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.2),
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.play_arrow,
-                  color: Colors.purpleAccent,
+                  color: Theme.of(context).primaryColor,
                   size: 32,
                 ),
               ),
@@ -590,23 +601,27 @@ class _WellnessScreenState extends State<WellnessScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Continue Last Session',
-                      style: TextStyle(fontSize: 14, color: Colors.white70),
+                      style: TextStyle(fontSize: 14, color: Colors.black54),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _lastSession!.title,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.black87,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+              const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.black26,
+                size: 16,
+              ),
             ],
           ),
         ),
@@ -616,7 +631,7 @@ class _WellnessScreenState extends State<WellnessScreen>
 
   Widget _buildDailyTip() {
     return GlassContainer(
-      opacity: 0.1,
+      opacity: 0.6,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -624,18 +639,18 @@ class _WellnessScreenState extends State<WellnessScreen>
           children: [
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.lightbulb_outline,
-                  color: Colors.amberAccent,
+                  color: Colors.amber,
                   size: 24,
                 ),
                 const SizedBox(width: 8),
-                Text(
+                const Text(
                   'Daily Wellness Tip',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.black87,
                   ),
                 ),
               ],
@@ -644,7 +659,7 @@ class _WellnessScreenState extends State<WellnessScreen>
             Text(
               _dailyTip ??
                   'Take a moment to breathe deeply and center yourself.',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: const TextStyle(color: Colors.black54, fontSize: 14),
             ),
           ],
         ),
@@ -700,19 +715,19 @@ class _WellnessScreenState extends State<WellnessScreen>
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            const Text(
               'Featured Resources',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Colors.black87,
               ),
             ),
             TextButton(
               onPressed: () => _tabController.animateTo(1),
               child: const Text(
                 'View All',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: Colors.black54),
               ),
             ),
           ],
@@ -831,7 +846,7 @@ class _WellnessScreenState extends State<WellnessScreen>
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 120, 16, 8),
               child: GlassContainer(
-                opacity: 0.1,
+                opacity: 0.6,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -842,7 +857,7 @@ class _WellnessScreenState extends State<WellnessScreen>
                             'Category:',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: Colors.black87,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -882,7 +897,7 @@ class _WellnessScreenState extends State<WellnessScreen>
                             'Duration:',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: Colors.black87,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -942,15 +957,15 @@ class _WellnessScreenState extends State<WellnessScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.self_improvement_outlined,
               size: 64,
-              color: Colors.white54,
+              color: Colors.black26,
             ),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'No meditations found',
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: Colors.black54),
             ),
           ],
         ),
@@ -995,12 +1010,12 @@ class _WellnessScreenState extends State<WellnessScreen>
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.2),
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       Icons.self_improvement,
-                      color: Colors.purpleAccent,
+                      color: Theme.of(context).primaryColor,
                       size: 32,
                     ),
                   ),
@@ -1014,13 +1029,16 @@ class _WellnessScreenState extends State<WellnessScreen>
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: Colors.black87,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           meditation.description,
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 12,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1030,7 +1048,7 @@ class _WellnessScreenState extends State<WellnessScreen>
                   IconButton(
                     icon: Icon(
                       isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? Colors.redAccent : Colors.white70,
+                      color: isFavorite ? Colors.redAccent : Colors.black26,
                     ),
                     onPressed: () => _toggleFavorite(meditation.id),
                   ),
@@ -1045,24 +1063,28 @@ class _WellnessScreenState extends State<WellnessScreen>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.2),
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       meditation.category.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.purpleAccent,
+                      style: TextStyle(
+                        color: Theme.of(context).primaryColor,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Icon(Icons.access_time, size: 14, color: Colors.white54),
+                  const Icon(
+                    Icons.access_time,
+                    size: 14,
+                    color: Colors.black26,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '${meditation.duration} min',
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                    style: const TextStyle(color: Colors.black54, fontSize: 12),
                   ),
                   if (sessionCount > 0) ...[
                     const SizedBox(width: 16),
@@ -1099,7 +1121,7 @@ class _WellnessScreenState extends State<WellnessScreen>
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 120, 16, 0),
             child: GlassContainer(
-              opacity: 0.2,
+              opacity: 0.6,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -1114,17 +1136,17 @@ class _WellnessScreenState extends State<WellnessScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             'Sleep Audio Suggested',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: Colors.black87,
                             ),
                           ),
                           Text(
                             sleepAudios.first.title,
-                            style: TextStyle(
-                              color: Colors.white70,
+                            style: const TextStyle(
+                              color: Colors.black54,
                               fontSize: 12,
                             ),
                           ),
@@ -1132,7 +1154,7 @@ class _WellnessScreenState extends State<WellnessScreen>
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.play_arrow, color: Colors.white),
+                      icon: const Icon(Icons.play_arrow, color: Colors.black87),
                       onPressed: () => _playResource(sleepAudios.first),
                     ),
                   ],
@@ -1159,16 +1181,18 @@ class _WellnessScreenState extends State<WellnessScreen>
       label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
-      selectedColor: Colors.white.withOpacity(0.3),
-      checkmarkColor: Colors.white,
-      backgroundColor: Colors.white10,
+      selectedColor: Theme.of(context).primaryColor.withOpacity(0.1),
+      checkmarkColor: Theme.of(context).primaryColor,
+      backgroundColor: Colors.black.withOpacity(0.05),
       labelStyle: TextStyle(
-        color: selected ? Colors.white : Colors.white70,
+        color: selected ? Theme.of(context).primaryColor : Colors.black87,
         fontWeight: selected ? FontWeight.bold : FontWeight.normal,
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: selected ? Colors.white : Colors.white24),
+        side: BorderSide(
+          color: selected ? Theme.of(context).primaryColor : Colors.black12,
+        ),
       ),
     );
   }
@@ -1183,11 +1207,11 @@ class _WellnessScreenState extends State<WellnessScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.spa_outlined, size: 64, color: Colors.white54),
+            const Icon(Icons.spa_outlined, size: 64, color: Colors.black26),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'No resources available',
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: Colors.black54),
             ),
           ],
         ),
@@ -1234,14 +1258,14 @@ class _WellnessScreenState extends State<WellnessScreen>
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.2),
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       resource.type == ResourceType.meditation
                           ? Icons.self_improvement
                           : Icons.audiotrack,
-                      color: Colors.purpleAccent,
+                      color: Theme.of(context).primaryColor,
                       size: 32,
                     ),
                   ),
@@ -1255,13 +1279,16 @@ class _WellnessScreenState extends State<WellnessScreen>
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: Colors.black87,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           resource.description,
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 12,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1272,7 +1299,7 @@ class _WellnessScreenState extends State<WellnessScreen>
                     IconButton(
                       icon: Icon(
                         isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: isFavorite ? Colors.redAccent : Colors.white70,
+                        color: isFavorite ? Colors.redAccent : Colors.black26,
                       ),
                       onPressed: () => _toggleFavorite(resource.id),
                     ),
@@ -1282,11 +1309,18 @@ class _WellnessScreenState extends State<WellnessScreen>
               Row(
                 children: [
                   if (resource.duration > 0) ...[
-                    Icon(Icons.access_time, size: 14, color: Colors.white54),
+                    const Icon(
+                      Icons.access_time,
+                      size: 14,
+                      color: Colors.black26,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '${resource.duration} min',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(width: 16),
                   ],
@@ -1297,13 +1331,13 @@ class _WellnessScreenState extends State<WellnessScreen>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.purple.withOpacity(0.2),
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         resource.tags.first.toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.purpleAccent,
+                        style: TextStyle(
+                          color: Theme.of(context).primaryColor,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1330,15 +1364,15 @@ class _WellnessScreenState extends State<WellnessScreen>
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.timer_outlined,
                         size: 14,
-                        color: Colors.white54,
+                        color: Colors.black26,
                       ),
                       const SizedBox(width: 4),
-                      Text(
+                      const Text(
                         'Auto-stop available',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                        style: TextStyle(color: Colors.black54, fontSize: 12),
                       ),
                     ],
                   ),
@@ -1366,19 +1400,19 @@ class _WellnessScreenState extends State<WellnessScreen>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => GlassContainer(
-        opacity: 0.9,
-        // Using high opacity for readability in modal
+        opacity: 0.8,
+        blur: 20,
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
+              const Text(
                 'Need Help Now?',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Colors.black87,
                 ),
               ),
               const SizedBox(height: 24),
@@ -1394,13 +1428,13 @@ class _WellnessScreenState extends State<WellnessScreen>
                 title: const Text(
                   'Breathing Exercise',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Colors.black87,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 subtitle: const Text(
                   'Quick 5-minute breathing exercise',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: Colors.black54),
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -1419,13 +1453,13 @@ class _WellnessScreenState extends State<WellnessScreen>
                 title: const Text(
                   'Find a Therapist',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Colors.black87,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 subtitle: const Text(
                   'Connect with a professional',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: Colors.black54),
                 ),
                 onTap: () {
                   Navigator.pop(context);

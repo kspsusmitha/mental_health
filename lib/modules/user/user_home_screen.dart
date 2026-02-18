@@ -175,11 +175,10 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('MindCare', style: TextStyle(color: Colors.white)),
+        title: const Text('MindCare'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        automaticallyImplyLeading: false, // Ensure no back arrow on root
-        iconTheme: const IconThemeData(color: Colors.white),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -230,7 +229,6 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                         'Quick Actions',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -352,7 +350,6 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                         'Your Mood This Week',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -368,14 +365,14 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
   Widget _buildWelcomeCard(BuildContext context) {
     final userName = _currentUser?.name ?? 'User';
     return GlassContainer(
-      opacity: 0.2,
+      opacity: 0.6,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.4),
-              Theme.of(context).colorScheme.secondary.withOpacity(0.4),
+              Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              Theme.of(context).colorScheme.secondary.withOpacity(0.1),
             ],
           ),
           borderRadius: BorderRadius.circular(16),
@@ -385,17 +382,16 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
           children: [
             Text(
               'Welcome back, $userName!',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'How are you feeling today?',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.white.withOpacity(0.9),
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: Colors.black54),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -406,9 +402,9 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                 ).then((_) => _loadMoodData());
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Theme.of(context).colorScheme.primary,
-                elevation: 0,
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                elevation: 2,
               ),
               child: const Text('Check In'),
             ),
@@ -426,10 +422,10 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
     required VoidCallback onTap,
   }) {
     return GlassContainer(
-      opacity: 0.15,
+      opacity: 0.6,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -439,8 +435,8 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
               Text(
                 title,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
               ),
             ],
@@ -453,17 +449,17 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
   Widget _buildMoodSummaryCard(BuildContext context) {
     if (_recentEntries.isEmpty) {
       return GlassContainer(
-        opacity: 0.15,
+        opacity: 0.6,
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
             child: Column(
               children: [
-                Icon(Icons.mood_outlined, size: 48, color: Colors.white38),
+                Icon(Icons.mood_outlined, size: 48, color: Colors.black26),
                 const SizedBox(height: 16),
-                Text(
+                const Text(
                   'No mood data this week',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: Colors.black54),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
@@ -474,8 +470,10 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                     ).then((_) => _loadMoodData());
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white24,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).primaryColor.withOpacity(0.1),
+                    foregroundColor: Theme.of(context).primaryColor,
                     elevation: 0,
                   ),
                   child: const Text('Start Tracking'),
@@ -519,7 +517,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
     }
 
     return GlassContainer(
-      opacity: 0.15,
+      opacity: 0.6,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -532,13 +530,13 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                   return _buildMoodDay(
                     day,
                     moodIcons[entry.mood] ?? Icons.sentiment_neutral,
-                    moodColors[entry.mood] ?? Colors.white70,
+                    moodColors[entry.mood] ?? Colors.black45,
                   );
                 } else {
                   return _buildMoodDay(
                     day,
                     Icons.circle_outlined,
-                    Colors.white24,
+                    Colors.black12,
                   );
                 }
               }).toList(),
@@ -552,8 +550,10 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                 ).then((_) => _loadMoodData());
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white24,
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(
+                  context,
+                ).primaryColor.withOpacity(0.1),
+                foregroundColor: Theme.of(context).primaryColor,
                 elevation: 0,
               ),
               child: const Text('View Full Analytics'),
@@ -569,7 +569,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: 4),
-        Text(day, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+        Text(day, style: const TextStyle(fontSize: 12, color: Colors.black54)),
       ],
     );
   }
@@ -611,10 +611,9 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
       children: [
         Text(
           'Daily Insights',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         CarouselSlider(
@@ -632,7 +631,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
             return Builder(
               builder: (BuildContext context) {
                 return GlassContainer(
-                  opacity: 0.15,
+                  opacity: 0.6,
                   child: Container(
                     width: MediaQuery.of(context).size.width,
                     padding: const EdgeInsets.all(16),
@@ -641,7 +640,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: (insight['color'] as Color).withOpacity(0.2),
+                            color: (insight['color'] as Color).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
@@ -659,7 +658,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                               Text(
                                 insight['title'] as String,
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.black,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -668,7 +667,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                               Text(
                                 insight['description'] as String,
                                 style: const TextStyle(
-                                  color: Colors.white70,
+                                  color: Colors.black54,
                                   fontSize: 14,
                                 ),
                                 maxLines: 2,

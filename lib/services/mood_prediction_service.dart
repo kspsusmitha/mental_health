@@ -1,50 +1,71 @@
+import 'package:flutter/foundation.dart';
 import '../models/journal_entry_model.dart';
 import 'realtime_database_service.dart';
 import 'auth_service.dart';
+import 'ai_service.dart';
 
 class MoodPredictionService {
   final RealtimeDatabaseService _database = RealtimeDatabaseService();
+  final AuthService authService;
+  final AIService aiService;
+
+  MoodPredictionService({required this.authService, required this.aiService});
 
   /// Predict mood patterns based on historical data
   Future<MoodPredictionResult> predictMoodPatterns(String userId) async {
     try {
-      final authService = AuthService();
       final userNodePath = authService.getCurrentUserNodePath();
       if (userNodePath == null) {
-        return MoodPredictionResult(
-          predictedMood: 'neutral',
-          confidence: 0.0,
-          patterns: [],
-          stressTriggers: [],
-          recommendations: [],
-        );
+        return _getFallbackResult({});
       }
 
-      // Load journal entries
-      final entriesData = await _database.readList('$userNodePath/$userId/journal_entries');
+      // Load journal entries for local and AI analysis
+      final entriesData = await _database.readList(
+        '$userNodePath/$userId/journal_entries',
+      );
+
       final entries = entriesData
           .map((data) => JournalEntryModel.fromMap(data))
           .toList();
 
       if (entries.isEmpty) {
-        return MoodPredictionResult(
-          predictedMood: 'neutral',
-          confidence: 0.0,
-          patterns: [],
-          stressTriggers: [],
-          recommendations: [],
-        );
+        return _getFallbackResult({});
       }
 
       // Sort by date
       entries.sort((a, b) => b.date.compareTo(a.date));
 
-      // Analyze patterns
+      // 1. AI Prediction from AIService
+      final aiPrediction = await aiService.predictMood(
+        userId,
+        [], // We could pass chat history here if we had it easily
+        entriesData,
+      );
+
+      // 2. Local pattern analysis (complementary)
       final patterns = _analyzePatterns(entries);
       final stressTriggers = _identifyStressTriggers(entries);
-      final predictedMood = _predictNextMood(entries);
-      final confidence = _calculateConfidence(entries);
-      final recommendations = _generateRecommendations(entries, patterns, stressTriggers);
+
+      final predictedMood =
+          aiPrediction['predictedMood'] ?? _predictNextMood(entries);
+      final confidence = (aiPrediction['confidence'] ?? 0.8).toDouble();
+
+      // Combine AI recommendations with local ones
+      final recommendations = _generateRecommendations(
+        entries,
+        patterns,
+        stressTriggers,
+      );
+
+      // Add AI identified risk factors to stress triggers or patterns
+      if (aiPrediction['riskFactors'] != null) {
+        final aiFactors = List<String>.from(aiPrediction['riskFactors']);
+        for (var factor in aiFactors) {
+          if (!stressTriggers.contains(factor)) {
+            stressTriggers.add(factor);
+          }
+        }
+      }
 
       return MoodPredictionResult(
         predictedMood: predictedMood,
@@ -54,6 +75,7 @@ class MoodPredictionService {
         recommendations: recommendations,
       );
     } catch (e) {
+      debugPrint('Error in predictMoodPatterns: $e');
       return MoodPredictionResult(
         predictedMood: 'neutral',
         confidence: 0.0,
@@ -62,6 +84,19 @@ class MoodPredictionService {
         recommendations: [],
       );
     }
+  }
+
+  MoodPredictionResult _getFallbackResult(Map<String, dynamic> apiResponse) {
+    return MoodPredictionResult(
+      predictedMood:
+          apiResponse['overall_mood']?.toString().toLowerCase() ?? 'neutral',
+      confidence: (apiResponse['intensity_level'] ?? 5).toDouble() / 10.0,
+      patterns: [],
+      stressTriggers: List<String>.from(apiResponse['emotion_tags'] ?? []),
+      recommendations: [
+        apiResponse['description'] ?? 'Keep monitoring your mood.',
+      ],
+    );
   }
 
   /// Analyze recurring patterns in mood data
@@ -81,12 +116,19 @@ class MoodPredictionService {
     for (final entry in moodByDayOfWeek.entries) {
       final avgMood = entry.value.reduce((a, b) => a + b) / entry.value.length;
       final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      patterns.add(MoodPattern(
-        type: 'Weekly Pattern',
-        description: 'Average mood on ${dayNames[entry.key - 1]}: ${_getMoodLabel(avgMood)}',
-        frequency: entry.value.length,
-        impact: avgMood < 0.4 ? 'High' : avgMood > 0.6 ? 'Low' : 'Medium',
-      ));
+      patterns.add(
+        MoodPattern(
+          type: 'Weekly Pattern',
+          description:
+              'Average mood on ${dayNames[entry.key - 1]}: ${_getMoodLabel(avgMood)}',
+          frequency: entry.value.length,
+          impact: avgMood < 0.4
+              ? 'High'
+              : avgMood > 0.6
+              ? 'Low'
+              : 'Medium',
+        ),
+      );
     }
 
     // Analyze time-based patterns
@@ -109,33 +151,47 @@ class MoodPredictionService {
     }
 
     if (stressPeriods.isNotEmpty) {
-      patterns.add(MoodPattern(
-        type: 'Time Pattern',
-        description: 'Higher stress periods: ${stressPeriods.map((h) => '$h:00').join(', ')}',
-        frequency: stressPeriods.length,
-        impact: 'High',
-      ));
+      patterns.add(
+        MoodPattern(
+          type: 'Time Pattern',
+          description:
+              'Higher stress periods: ${stressPeriods.map((h) => '$h:00').join(', ')}',
+          frequency: stressPeriods.length,
+          impact: 'High',
+        ),
+      );
     }
 
     // Analyze mood trends
     if (entries.length >= 7) {
-      final recentAvg = entries.take(7).map((e) => e.moodScore).reduce((a, b) => a + b) / 7;
-      final olderAvg = entries.skip(7).take(7).map((e) => e.moodScore).reduce((a, b) => a + b) / 7;
-      
+      final recentAvg =
+          entries.take(7).map((e) => e.moodScore).reduce((a, b) => a + b) / 7;
+      final olderAvg =
+          entries
+              .skip(7)
+              .take(7)
+              .map((e) => e.moodScore)
+              .reduce((a, b) => a + b) /
+          7;
+
       if (recentAvg < olderAvg - 0.1) {
-        patterns.add(MoodPattern(
-          type: 'Trend',
-          description: 'Mood has been declining recently',
-          frequency: 1,
-          impact: 'High',
-        ));
+        patterns.add(
+          MoodPattern(
+            type: 'Trend',
+            description: 'Mood has been declining recently',
+            frequency: 1,
+            impact: 'High',
+          ),
+        );
       } else if (recentAvg > olderAvg + 0.1) {
-        patterns.add(MoodPattern(
-          type: 'Trend',
-          description: 'Mood has been improving recently',
-          frequency: 1,
-          impact: 'Low',
-        ));
+        patterns.add(
+          MoodPattern(
+            type: 'Trend',
+            description: 'Mood has been improving recently',
+            frequency: 1,
+            impact: 'Low',
+          ),
+        );
       }
     }
 
@@ -145,14 +201,14 @@ class MoodPredictionService {
   /// Identify common stress triggers
   List<String> _identifyStressTriggers(List<JournalEntryModel> entries) {
     final triggerCounts = <String, int>{};
-    
+
     for (final entry in entries) {
       if (entry.stressTriggers != null) {
         for (final trigger in entry.stressTriggers!) {
           triggerCounts[trigger] = (triggerCounts[trigger] ?? 0) + 1;
         }
       }
-      
+
       // Also analyze content for common stress words
       final content = entry.content.toLowerCase();
       if (entry.moodScore < 0.4) {
@@ -160,7 +216,8 @@ class MoodPredictionService {
           triggerCounts['Work'] = (triggerCounts['Work'] ?? 0) + 1;
         }
         if (content.contains('family') || content.contains('relationship')) {
-          triggerCounts['Relationships'] = (triggerCounts['Relationships'] ?? 0) + 1;
+          triggerCounts['Relationships'] =
+              (triggerCounts['Relationships'] ?? 0) + 1;
         }
         if (content.contains('money') || content.contains('financial')) {
           triggerCounts['Financial'] = (triggerCounts['Financial'] ?? 0) + 1;
@@ -174,7 +231,7 @@ class MoodPredictionService {
     // Return top 5 triggers
     final sortedTriggers = triggerCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    
+
     return sortedTriggers.take(5).map((e) => e.key).toList();
   }
 
@@ -184,9 +241,9 @@ class MoodPredictionService {
 
     // Get recent mood average
     final recentEntries = entries.take(7);
-    final avgMoodScore = recentEntries
-        .map((e) => e.moodScore)
-        .reduce((a, b) => a + b) / recentEntries.length;
+    final avgMoodScore =
+        recentEntries.map((e) => e.moodScore).reduce((a, b) => a + b) /
+        recentEntries.length;
 
     // Check for declining trend
     if (entries.length >= 3) {
@@ -197,13 +254,6 @@ class MoodPredictionService {
     }
 
     return _getMoodLabel(avgMoodScore);
-  }
-
-  /// Calculate prediction confidence
-  double _calculateConfidence(List<JournalEntryModel> entries) {
-    if (entries.length < 7) return 0.3;
-    if (entries.length < 30) return 0.6;
-    return 0.9;
   }
 
   /// Generate recommendations based on patterns
@@ -229,15 +279,24 @@ class MoodPredictionService {
     }
 
     // Check patterns
-    final highImpactPatterns = patterns.where((p) => p.impact == 'High').toList();
+    final highImpactPatterns = patterns
+        .where((p) => p.impact == 'High')
+        .toList();
     if (highImpactPatterns.isNotEmpty) {
       recommendations.add('Be aware of your stress patterns');
     }
 
     // Check for declining trend
     if (entries.length >= 7) {
-      final recentAvg = entries.take(7).map((e) => e.moodScore).reduce((a, b) => a + b) / 7;
-      final olderAvg = entries.skip(7).take(7).map((e) => e.moodScore).reduce((a, b) => a + b) / 7;
+      final recentAvg =
+          entries.take(7).map((e) => e.moodScore).reduce((a, b) => a + b) / 7;
+      final olderAvg =
+          entries
+              .skip(7)
+              .take(7)
+              .map((e) => e.moodScore)
+              .reduce((a, b) => a + b) /
+          7;
       if (recentAvg < olderAvg - 0.1) {
         recommendations.add('Consider speaking with a therapist');
       }

@@ -38,14 +38,16 @@ class TherapistModel extends UserModel {
     this.isVerified = false,
     this.languages = const [],
     this.availability,
+    String? apiKey,
   }) : super(
          id: id,
          email: email,
          name: name,
          password: password,
          profileImageUrl: profileImageUrl,
+         apiKey: apiKey,
          userType: UserType.therapist,
-         createdAt: DateTime.now(), // Or pass it if needed
+         createdAt: DateTime.now(),
        );
 
   factory TherapistModel.fromMap(Map<String, dynamic> map) {
@@ -83,6 +85,7 @@ class TherapistModel extends UserModel {
       isVerified: map['isVerified'] ?? false,
       languages: List<String>.from(map['languages'] ?? []),
       availability: parseAvailability(map['availability']),
+      apiKey: map['apiKey'],
     );
   }
 
@@ -104,6 +107,7 @@ class TherapistModel extends UserModel {
       'isVerified': isVerified,
       'languages': languages,
       'availability': availability,
+      'apiKey': apiKey,
       // Include UserModel fields if needed by generic user parsers
       'userType': UserType.therapist.toString(),
       'createdAt': DateTime.now().millisecondsSinceEpoch,

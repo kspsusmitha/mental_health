@@ -4,6 +4,7 @@ class UserModel {
   final String name;
   final String password; // Storing plain text password as requested
   final String? profileImageUrl;
+  final String? apiKey;
   final UserType userType;
   final DateTime createdAt;
   final Map<String, dynamic>? additionalInfo;
@@ -14,6 +15,7 @@ class UserModel {
     required this.name,
     required this.password,
     this.profileImageUrl,
+    this.apiKey,
     required this.userType,
     required this.createdAt,
     this.additionalInfo,
@@ -26,11 +28,14 @@ class UserModel {
       name: map['name'] ?? '',
       password: map['password'] ?? '',
       profileImageUrl: map['profileImageUrl'],
+      apiKey: map['apiKey'],
       userType: UserType.fromString(map['userType'] ?? 'user'),
       createdAt: map['createdAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int)
           : DateTime.now(),
-      additionalInfo: map['additionalInfo'],
+      additionalInfo: map['additionalInfo'] != null
+          ? Map<String, dynamic>.from(map['additionalInfo'] as Map)
+          : null,
     );
   }
 
@@ -41,6 +46,7 @@ class UserModel {
       'name': name,
       'password': password,
       'profileImageUrl': profileImageUrl,
+      'apiKey': apiKey,
       'userType': userType.toString(),
       'createdAt': createdAt.millisecondsSinceEpoch,
       'additionalInfo': additionalInfo,

@@ -141,8 +141,8 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF6A11CB), // Deep Purple
-                      const Color(0xFF2575FC), // Vibrant Blue
+                      Colors.white.withOpacity(0.1), // Lighter variant
+                      Colors.white.withOpacity(0.05), // Lighter variant
                     ],
                     begin: _topAlignmentAnimation.value,
                     end: _bottomAlignmentAnimation.value,
@@ -156,16 +156,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
         Positioned.fill(
           child: Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.35),
-                  Colors.black.withOpacity(widget.overlayOpacity * 0.5),
-                  Colors.black.withOpacity(widget.overlayOpacity * 0.8),
-                ],
-                stops: const [0.0, 0.5, 1.0],
-              ),
+              color: Colors.white.withOpacity(0.2), // Lighten overall
             ),
           ),
         ),

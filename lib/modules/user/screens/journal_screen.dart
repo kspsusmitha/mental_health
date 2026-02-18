@@ -170,23 +170,17 @@ class _JournalScreenState extends State<JournalScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text(
-          'Well-Being Journal',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text('Well-Being Journal'),
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => _showSearchDialog(),
-            color: Colors.white,
           ),
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: () => _showFilterDialog(),
-            color: Colors.white,
           ),
           IconButton(
             icon: Icon(_showEntryForm ? Icons.close : Icons.add),
@@ -202,7 +196,6 @@ class _JournalScreenState extends State<JournalScreen> {
               });
             },
             tooltip: _showEntryForm ? 'Close Form' : 'New Entry',
-            color: Colors.white,
           ),
         ],
       ),
@@ -227,7 +220,7 @@ class _JournalScreenState extends State<JournalScreen> {
                     if (_searchQuery.isNotEmpty || _selectedMoodFilter != null)
                       SliverToBoxAdapter(
                         child: GlassContainer(
-                          opacity: 0.2,
+                          opacity: 0.6,
                           borderRadius: BorderRadius.zero,
                           padding: const EdgeInsets.all(8),
                           child: Row(
@@ -235,10 +228,14 @@ class _JournalScreenState extends State<JournalScreen> {
                               if (_searchQuery.isNotEmpty)
                                 Chip(
                                   label: Text('Search: $_searchQuery'),
-                                  backgroundColor: Colors.white24,
-                                  deleteIconColor: Colors.white,
-                                  labelStyle: const TextStyle(
-                                    color: Colors.white,
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.1),
+                                  deleteIconColor: Theme.of(
+                                    context,
+                                  ).primaryColor,
+                                  labelStyle: TextStyle(
+                                    color: Theme.of(context).primaryColor,
                                   ),
                                   onDeleted: () {
                                     setState(() {
@@ -251,10 +248,16 @@ class _JournalScreenState extends State<JournalScreen> {
                                 const SizedBox(width: 8),
                                 Chip(
                                   label: Text('Mood: $_selectedMoodFilter'),
-                                  backgroundColor: Colors.white24,
-                                  deleteIconColor: Colors.white,
-                                  labelStyle: const TextStyle(
-                                    color: Colors.white,
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.secondary.withOpacity(0.1),
+                                  deleteIconColor: Theme.of(
+                                    context,
+                                  ).colorScheme.secondary,
+                                  labelStyle: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary,
                                   ),
                                   onDeleted: () {
                                     setState(() {
@@ -277,19 +280,19 @@ class _JournalScreenState extends State<JournalScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.book_outlined,
                                 size: 64,
-                                color: Colors.white60,
+                                color: Colors.black26,
                               ),
                               const SizedBox(height: 16),
                               Text(
                                 _entries.isEmpty
                                     ? 'No journal entries yet'
                                     : 'No entries match your filters',
-                                style: const TextStyle(color: Colors.white70),
+                                style: const TextStyle(color: Colors.black54),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 16),
                               if (_entries.isEmpty)
                                 ElevatedButton(
                                   onPressed: () {
@@ -298,8 +301,10 @@ class _JournalScreenState extends State<JournalScreen> {
                                     });
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.pink[600],
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).primaryColor,
+                                    foregroundColor: Colors.white,
                                   ),
                                   child: const Text('Write Your First Entry'),
                                 )
@@ -313,8 +318,10 @@ class _JournalScreenState extends State<JournalScreen> {
                                     });
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.pink[600],
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).primaryColor,
+                                    foregroundColor: Colors.white,
                                   ),
                                   child: const Text('Clear Filters'),
                                 ),
@@ -353,7 +360,7 @@ class _JournalScreenState extends State<JournalScreen> {
 
     return GlassContainer(
       margin: const EdgeInsets.all(16),
-      opacity: 0.2,
+      opacity: 0.6,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -361,14 +368,18 @@ class _JournalScreenState extends State<JournalScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.edit_note, color: Colors.white, size: 24),
+                Icon(
+                  Icons.edit_note,
+                  color: Theme.of(context).primaryColor,
+                  size: 24,
+                ),
                 const SizedBox(width: 8),
                 const Text(
                   'New Journal Entry',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.black87,
                   ),
                 ),
               ],
@@ -378,9 +389,9 @@ class _JournalScreenState extends State<JournalScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white24),
+                color: Theme.of(context).primaryColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.black12),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,14 +401,14 @@ class _JournalScreenState extends State<JournalScreen> {
                       Icon(
                         Icons.calendar_today,
                         size: 18,
-                        color: Colors.white70,
+                        color: Theme.of(context).primaryColor,
                       ),
                       const SizedBox(width: 8),
                       const Text(
                         'Date & Time',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: Colors.black87,
                           fontSize: 14,
                         ),
                       ),
@@ -447,14 +458,14 @@ class _JournalScreenState extends State<JournalScreen> {
                                 Icon(
                                   Icons.event,
                                   size: 18,
-                                  color: Colors.white70,
+                                  color: Theme.of(context).primaryColor,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   DateFormat(
                                     'MMM dd, yyyy',
                                   ).format(_selectedDate),
-                                  style: const TextStyle(color: Colors.white),
+                                  style: const TextStyle(color: Colors.black87),
                                 ),
                               ],
                             ),
@@ -510,12 +521,12 @@ class _JournalScreenState extends State<JournalScreen> {
                                 Icon(
                                   Icons.access_time,
                                   size: 18,
-                                  color: Colors.white70,
+                                  color: Theme.of(context).primaryColor,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   _selectedTime.format(context),
-                                  style: const TextStyle(color: Colors.white),
+                                  style: const TextStyle(color: Colors.black87),
                                 ),
                               ],
                             ),
@@ -533,7 +544,7 @@ class _JournalScreenState extends State<JournalScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Colors.black87,
               ),
             ),
             const SizedBox(height: 8),
@@ -545,14 +556,20 @@ class _JournalScreenState extends State<JournalScreen> {
                 return FilterChip(
                   label: Text(mood),
                   selected: isSelected,
-                  selectedColor: Colors.white24,
-                  checkmarkColor: Colors.white,
+                  selectedColor: Theme.of(
+                    context,
+                  ).primaryColor.withOpacity(0.1),
+                  checkmarkColor: Theme.of(context).primaryColor,
                   backgroundColor: Colors.transparent,
                   side: BorderSide(
-                    color: isSelected ? Colors.white : Colors.white24,
+                    color: isSelected
+                        ? Theme.of(context).primaryColor
+                        : Colors.black12,
                   ),
                   labelStyle: TextStyle(
-                    color: Colors.white,
+                    color: isSelected
+                        ? Theme.of(context).primaryColor
+                        : Colors.black54,
                     fontWeight: isSelected
                         ? FontWeight.bold
                         : FontWeight.normal,
@@ -566,26 +583,29 @@ class _JournalScreenState extends State<JournalScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _contentController,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.black87),
               decoration: InputDecoration(
                 labelText: 'Write your thoughts...',
-                labelStyle: const TextStyle(color: Colors.white70),
+                labelStyle: const TextStyle(color: Colors.black54),
                 hintText: 'Express your feelings, thoughts, or experiences...',
-                hintStyle: const TextStyle(color: Colors.white38),
+                hintStyle: const TextStyle(color: Colors.black26),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white24),
+                  borderSide: const BorderSide(color: Colors.black12),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white24),
+                  borderSide: const BorderSide(color: Colors.black12),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white, width: 2),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).primaryColor,
+                    width: 2,
+                  ),
                 ),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
+                fillColor: Colors.black.withOpacity(0.05),
               ),
               maxLines: 6,
               autofocus: false,
@@ -606,7 +626,7 @@ class _JournalScreenState extends State<JournalScreen> {
                   },
                   child: const Text(
                     'Cancel',
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(color: Colors.black54),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -635,8 +655,8 @@ class _JournalScreenState extends State<JournalScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.pink[600],
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
                       vertical: 12,
@@ -920,9 +940,9 @@ class _JournalScreenState extends State<JournalScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.pink[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.pink[200]!),
+                    color: Theme.of(context).primaryColor.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.black12),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -932,14 +952,14 @@ class _JournalScreenState extends State<JournalScreen> {
                           Icon(
                             Icons.calendar_today,
                             size: 18,
-                            color: Colors.pink[700],
+                            color: Theme.of(context).primaryColor,
                           ),
                           const SizedBox(width: 8),
-                          Text(
+                          const Text(
                             'Date & Time',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.pink[900],
+                              color: Colors.black87,
                               fontSize: 14,
                             ),
                           ),
@@ -960,7 +980,9 @@ class _JournalScreenState extends State<JournalScreen> {
                                     return Theme(
                                       data: Theme.of(context).copyWith(
                                         colorScheme: ColorScheme.light(
-                                          primary: Colors.pink[600]!,
+                                          primary: Theme.of(
+                                            context,
+                                          ).primaryColor,
                                           onPrimary: Colors.white,
                                           surface: Colors.white,
                                           onSurface: Colors.black87,
@@ -982,23 +1004,25 @@ class _JournalScreenState extends State<JournalScreen> {
                                   horizontal: 12,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: Colors.black.withOpacity(0.05),
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.pink[300]!),
+                                  border: Border.all(color: Colors.black12),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.event,
                                       size: 18,
-                                      color: Colors.pink[600],
+                                      color: Theme.of(context).primaryColor,
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
                                       DateFormat(
                                         'MMM dd, yyyy',
                                       ).format(selectedDate),
-                                      style: TextStyle(color: Colors.pink[900]),
+                                      style: const TextStyle(
+                                        color: Colors.black87,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -1016,7 +1040,9 @@ class _JournalScreenState extends State<JournalScreen> {
                                     return Theme(
                                       data: Theme.of(context).copyWith(
                                         colorScheme: ColorScheme.light(
-                                          primary: Colors.pink[600]!,
+                                          primary: Theme.of(
+                                            context,
+                                          ).primaryColor,
                                           onPrimary: Colors.white,
                                           surface: Colors.white,
                                           onSurface: Colors.black87,
@@ -1045,21 +1071,23 @@ class _JournalScreenState extends State<JournalScreen> {
                                   horizontal: 12,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: Colors.black.withOpacity(0.05),
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.pink[300]!),
+                                  border: Border.all(color: Colors.black12),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.access_time,
                                       size: 18,
-                                      color: Colors.pink[600],
+                                      color: Theme.of(context).primaryColor,
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
                                       selectedTime.format(context),
-                                      style: TextStyle(color: Colors.pink[900]),
+                                      style: const TextStyle(
+                                        color: Colors.black87,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -1081,11 +1109,17 @@ class _JournalScreenState extends State<JournalScreen> {
                     return FilterChip(
                       label: Text(mood),
                       selected: isSelected,
-                      selectedColor: Colors.pink[100],
-                      checkmarkColor: Colors.pink[700],
+                      selectedColor: Theme.of(
+                        context,
+                      ).primaryColor.withOpacity(0.1),
+                      checkmarkColor: Theme.of(context).primaryColor,
                       labelStyle: TextStyle(
-                        color: isSelected ? Colors.pink[900] : null,
-                        fontWeight: isSelected ? FontWeight.bold : null,
+                        color: isSelected
+                            ? Theme.of(context).primaryColor
+                            : Colors.black87,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                       onSelected: (selected) {
                         setState(() => selectedMood = mood);
@@ -1096,18 +1130,23 @@ class _JournalScreenState extends State<JournalScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: contentController,
+                  style: const TextStyle(color: Colors.black87),
                   decoration: InputDecoration(
                     labelText: 'Write your thoughts...',
-                    labelStyle: TextStyle(color: Colors.pink[700]),
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.pink[300]!),
+                    labelStyle: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    border: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.black12),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderSide: BorderSide(
-                        color: Colors.pink[600]!,
+                        color: Theme.of(context).primaryColor,
                         width: 2,
                       ),
                     ),
+                    filled: true,
+                    fillColor: Colors.black.withOpacity(0.05),
                   ),
                   maxLines: 8,
                   autofocus: true,
@@ -1118,7 +1157,10 @@ class _JournalScreenState extends State<JournalScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel', style: TextStyle(color: Colors.pink[700])),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Theme.of(context).primaryColor),
+              ),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -1135,7 +1177,7 @@ class _JournalScreenState extends State<JournalScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.pink[600],
+                backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Update'),
@@ -1188,10 +1230,8 @@ class _JournalScreenState extends State<JournalScreen> {
       final currentUser = authService.currentUser;
       if (currentUser == null) return;
 
-      final username = currentUser.name.toLowerCase().replaceAll(' ', '_');
-
       await dbService.writeData(
-        '$userNodePath/$username/journal_entries/${entry.id}',
+        '$userNodePath/${entry.userId}/journal_entries/${entry.id}',
         updatedEntry.toMap(),
       );
 
@@ -1247,10 +1287,8 @@ class _JournalScreenState extends State<JournalScreen> {
       final currentUser = authService.currentUser;
       if (currentUser == null) return;
 
-      final username = currentUser.name.toLowerCase().replaceAll(' ', '_');
-
       await dbService.deleteData(
-        '$userNodePath/$username/journal_entries/${entry.id}',
+        '$userNodePath/${entry.userId}/journal_entries/${entry.id}',
       );
 
       _loadEntries();
@@ -1321,12 +1359,12 @@ class _JournalScreenState extends State<JournalScreen> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.white24,
+            color: Theme.of(context).primaryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.calendar_today,
-            color: Colors.white,
+            color: Theme.of(context).primaryColor,
             size: 20,
           ),
         ),
@@ -1334,15 +1372,15 @@ class _JournalScreenState extends State<JournalScreen> {
           dateLabel,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Colors.black87,
             fontSize: 16,
           ),
         ),
         subtitle: Text(
           '${entries.length} ${entries.length == 1 ? 'entry' : 'entries'}',
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          style: const TextStyle(color: Colors.black54, fontSize: 12),
         ),
-        trailing: const Icon(Icons.expand_more, color: Colors.white70),
+        trailing: const Icon(Icons.expand_more, color: Colors.black54),
         backgroundColor: Colors.transparent,
         collapsedBackgroundColor: Colors.transparent,
         children: entries.asMap().entries.map((entryMap) {
@@ -1496,7 +1534,7 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
         opacity: _fadeAnimation,
         child: GlassContainer(
           margin: const EdgeInsets.only(bottom: 16),
-          opacity: 0.1,
+          opacity: 0.6,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -1510,7 +1548,7 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: moodColor.withOpacity(0.2),
+                        color: moodColor.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(moodIcon, color: moodColor, size: 24),
@@ -1529,7 +1567,7 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: moodColor.withOpacity(0.2),
+                                  color: moodColor.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -1574,13 +1612,13 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
                               const Icon(
                                 Icons.access_time,
                                 size: 14,
-                                color: Colors.white70,
+                                color: Colors.black45,
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 relativeTime,
                                 style: const TextStyle(
-                                  color: Colors.white70,
+                                  color: Colors.black54,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -1590,7 +1628,7 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
                                 width: 3,
                                 height: 3,
                                 decoration: const BoxDecoration(
-                                  color: Colors.white30,
+                                  color: Colors.black12,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -1598,7 +1636,7 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
                               Text(
                                 timeFormat.format(widget.entry.date),
                                 style: const TextStyle(
-                                  color: Colors.white54,
+                                  color: Colors.black38,
                                   fontSize: 12,
                                 ),
                               ),
@@ -1613,9 +1651,9 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
                         icon: const Icon(
                           Icons.more_vert,
                           size: 20,
-                          color: Colors.white70,
+                          color: Colors.black45,
                         ),
-                        color: const Color(0xFF2A2A2A), // Dark menu
+                        color: Colors.white, // Light menu
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -1636,12 +1674,12 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
                                   Icon(
                                     Icons.edit,
                                     size: 18,
-                                    color: Colors.white,
+                                    color: Colors.black87,
                                   ),
                                   SizedBox(width: 8),
                                   Text(
                                     'Edit',
-                                    style: TextStyle(color: Colors.white),
+                                    style: TextStyle(color: Colors.black87),
                                   ),
                                 ],
                               ),
@@ -1676,14 +1714,14 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
                     fontSize: 15,
                     height: 1.5,
                     letterSpacing: 0.2,
-                    color: Colors.white,
+                    color: Colors.black87,
                   ),
                 ),
                 // Stress Triggers
                 if (widget.entry.stressTriggers != null &&
                     widget.entry.stressTriggers!.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  const Divider(color: Colors.white12),
+                  const Divider(color: Colors.black12),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
@@ -1692,7 +1730,7 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
                       const Icon(
                         Icons.info_outline,
                         size: 14,
-                        color: Colors.white70,
+                        color: Colors.black45,
                       ),
                       const SizedBox(width: 4),
                       ...widget.entry.stressTriggers!.take(3).map((trigger) {
@@ -1711,7 +1749,7 @@ class _JournalEntryCardState extends State<_JournalEntryCard>
                           child: Text(
                             trigger,
                             style: TextStyle(
-                              color: Colors.red[200],
+                              color: Colors.red[700],
                               fontSize: 11,
                             ),
                           ),

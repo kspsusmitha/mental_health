@@ -18,8 +18,6 @@ class AIMoodPredictionScreen extends StatefulWidget {
 }
 
 class _AIMoodPredictionScreenState extends State<AIMoodPredictionScreen> {
-  final MoodPredictionService _predictionService = MoodPredictionService();
-  final RecommendationService _recommendationService = RecommendationService();
   MoodPredictionResult? _predictionResult;
   List<Recommendation> _recommendations = [];
   bool _isLoading = true;
@@ -34,11 +32,20 @@ class _AIMoodPredictionScreenState extends State<AIMoodPredictionScreen> {
     setState(() => _isLoading = true);
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      final predictionService = Provider.of<MoodPredictionService>(
+        context,
+        listen: false,
+      );
+      final recommendationService = Provider.of<RecommendationService>(
+        context,
+        listen: false,
+      );
+
       final userId = authService.currentUser?.id;
       if (userId != null) {
-        final result = await _predictionService.predictMoodPatterns(userId);
+        final result = await predictionService.predictMoodPatterns(userId);
         // Get personalized recommendations based on predicted mood
-        final recommendations = await _recommendationService
+        final recommendations = await recommendationService
             .getPersonalizedRecommendations(userId);
 
         setState(() {

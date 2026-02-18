@@ -9,6 +9,7 @@ class AppointmentModel {
   final String? sessionLink;
   final DateTime? completedAt;
   final Map<String, dynamic>? feedback;
+  final bool isReviewed;
 
   AppointmentModel({
     required this.id,
@@ -21,6 +22,7 @@ class AppointmentModel {
     this.sessionLink,
     this.completedAt,
     this.feedback,
+    this.isReviewed = false,
   });
 
   factory AppointmentModel.fromMap(Map<String, dynamic> map) {
@@ -39,6 +41,7 @@ class AppointmentModel {
           ? DateTime.fromMillisecondsSinceEpoch(map['completedAt'] as int)
           : null,
       feedback: map['feedback'],
+      isReviewed: map['isReviewed'] ?? false,
     );
   }
 
@@ -54,6 +57,7 @@ class AppointmentModel {
       'sessionLink': sessionLink,
       'completedAt': completedAt?.millisecondsSinceEpoch,
       'feedback': feedback,
+      'isReviewed': isReviewed,
     };
   }
 }

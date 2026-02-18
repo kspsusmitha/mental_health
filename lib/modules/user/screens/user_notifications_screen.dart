@@ -8,9 +8,18 @@ import '../../../models/notification_model.dart';
 import '../../../widgets/animated_background.dart';
 import '../../../widgets/glass_container.dart';
 
-class UserNotificationsScreen extends StatelessWidget {
+import '../../../models/appointment_model.dart';
+import './appointment_detail_screen.dart';
+
+class UserNotificationsScreen extends StatefulWidget {
   const UserNotificationsScreen({super.key});
 
+  @override
+  State<UserNotificationsScreen> createState() =>
+      _UserNotificationsScreenState();
+}
+
+class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);
@@ -142,7 +151,7 @@ class UserNotificationsScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      onTap: () {
+                      onTap: () async {
                         if (!notification.isRead) {
                           NotificationService(
                             Provider.of<RealtimeDatabaseService>(
@@ -150,6 +159,69 @@ class UserNotificationsScreen extends StatelessWidget {
                               listen: false,
                             ),
                           ).markAsRead(userId, notification.id);
+                        }
+
+                        // Redirection logic
+                        if (notification.data != null &&
+                            notification.data!['appointmentId'] != null) {
+                          final appointmentId =
+                              notification.data!['appointmentId'];
+
+                          // Show loading
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            ),
+                          );
+
+                          try {
+                            final dbService =
+                                Provider.of<RealtimeDatabaseService>(
+                                  context,
+                                  listen: false,
+                                );
+
+                            // We need to know the user type to find the appointment node path
+                            // But since this is UserNotificationsScreen, we assume it's for the 'user'
+                            final appointmentData = await dbService.readData(
+                              'users/$userId/appointments/$appointmentId',
+                            );
+
+                            if (context.mounted) {
+                              Navigator.pop(context); // Remove loading
+                              if (appointmentData != null) {
+                                final appointment = AppointmentModel.fromMap(
+                                  appointmentData,
+                                );
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        AppointmentDetailScreen(
+                                          appointment: appointment,
+                                        ),
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Appointment not found'),
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              Navigator.pop(context); // Remove loading
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e')),
+                              );
+                            }
+                          }
                         }
                       },
                     ),

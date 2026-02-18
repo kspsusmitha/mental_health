@@ -142,9 +142,19 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    String getBackgroundImage() {
+      switch (widget.selectedUserType) {
+        case UserType.therapist:
+          return 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=2070&auto=format&fit=crop';
+        case UserType.admin:
+          return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop';
+        default:
+          return 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2071&auto=format&fit=crop';
+      }
+    }
+
     return AnimatedBackground(
-      imageUrl:
-          'https://images.unsplash.com/photo-1544367563-12123d8965cd?q=80&w=2070&auto=format&fit=crop',
+      imageUrl: getBackgroundImage(),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -217,10 +227,21 @@ class _LoginScreenState extends State<LoginScreen>
                                               ),
                                             ],
                                           ),
-                                          child: const Icon(
-                                            Icons.health_and_safety,
-                                            size: 60,
-                                            color: Color(0xFF667EEA),
+                                          child: ClipOval(
+                                            child: Image.network(
+                                              'https://images.unsplash.com/photo-1544367563-12123d8965cd?q=80&w=200&auto=format&fit=crop',
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (
+                                                    context,
+                                                    error,
+                                                    stackTrace,
+                                                  ) => const Icon(
+                                                    Icons.health_and_safety,
+                                                    size: 60,
+                                                    color: Color(0xFF667EEA),
+                                                  ),
+                                            ),
                                           ),
                                         ),
                                       );
